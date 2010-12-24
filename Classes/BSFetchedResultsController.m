@@ -8,6 +8,8 @@
 
 #import "BSFetchedResultsController.h"
 
+NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Section";
+
 #pragma mark NSArray categories
 
 // Add a category to NSArray to filter using such a filter block
@@ -38,7 +40,6 @@
 }
 
 @end
-
 
 #pragma mark -
 #pragma mark BSFetchedResultsControllerSection
@@ -238,9 +239,15 @@
 }
 
 -(NSIndexPath *)indexPathForObject:(id)object {
-	// Get the key which is the section name of this object
-	NSString *key = [object valueForKeyPath:_sectionNameKeyPath];
-	NSUInteger sectionIndex, rowIndex;
+	// If there isn't a section key path, use the default key
+	NSString *key = nil;		
+	if(_sectionNameKeyPath) {
+		key = [object valueForKeyPath:_sectionNameKeyPath];
+	} else {
+		key = kBSFetchedResultsControllerDefaultSectionName;
+	}
+
+	NSUInteger sectionIndex, rowIndex = 0;
 	NSArray *objs = nil;
 	if (key) {
 		// The section objects
@@ -299,10 +306,12 @@
 		 */		 
 		 
 		didChangeNotificationHandler = [nc addObserverForName:NSManagedObjectContextObjectsDidChangeNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
+			
 			// This is the notification block, here we need to analyse the inserted, updated and deleted objects
 			// and see how they impact our fetched results
 			
 			if(handlingChange) return;
+			
 			// Set that we're handing a change
 			handlingChange = YES;
 			
@@ -534,6 +543,7 @@
 }
 
 - (NSMutableArray *)addFetchedObjects:(NSArray *)objs {
+
 	// This will update the BSFetchedResultsController members with the objects
 	// This function is called during a performFetch, to initally setup the
 	// fetched objects. It is also called during the DidChangeNotification
@@ -546,13 +556,21 @@
 	// Enumerate the objects and put them into the dictionary sections
 	[objs enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
 		
+		// If there isn't a section key path, use the default key
+		NSString *key = nil;		
+		if(_sectionNameKeyPath) {
+			key = [obj valueForKeyPath:_sectionNameKeyPath];
+		} else {
+			key = kBSFetchedResultsControllerDefaultSectionName;
+		}
+
 		// Get the mutable array of objects for this section
-		NSMutableArray *sectionObjs = [dic objectForKey:[obj valueForKeyPath:_sectionNameKeyPath]];
+		NSMutableArray *sectionObjs = [dic objectForKey:key];		
 		
 		// Create this array if it doesn't exist yet
 		if(!sectionObjs) {
 			sectionObjs = [NSMutableArray array];
-			[dic setObject:sectionObjs forKey:[obj valueForKeyPath:_sectionNameKeyPath]];
+			[dic setObject:sectionObjs forKey:key];
 		}
 		
 		// Add the object to the section's array
@@ -580,9 +598,11 @@
 				
 		// Create a Section object
 		BSFetchedResultsControllerSection *aSection = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
-		aSection.key = key;
-		[aSection setName:[key capitalizedString]];
-		[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];
+		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+			aSection.key = key;
+			[aSection setName:[key capitalizedString]];
+			[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];			
+		}
 		[aSection setObjects:sortedObjs];
 		[theSections addObject:aSection];
 		
@@ -618,16 +638,24 @@
 	return addedSections;
 }
 
+
 - (NSDictionary *)removeFetchedObjects:(NSArray *)objs {
 	
 	// Get a mutable dictionary of the sections
 	NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithDictionary:(NSDictionary *)_sectionsByName];
 	
 	// Iterate through the array of objs
-	for(id obj in objs) {
+	for (id obj in objs) {
 		
 		// Get the key
-		NSString *key = [obj valueForKeyPath:_sectionNameKeyPath];
+		// If there isn't a section key path, use the default key
+		NSString *key = nil;		
+		if(_sectionNameKeyPath) {
+			key = [obj valueForKeyPath:_sectionNameKeyPath];
+		} else {
+			key = kBSFetchedResultsControllerDefaultSectionName;
+		}
+		
 		NSUInteger sectionIndex;
 		NSMutableArray *sectionObjects = nil;
 
@@ -642,6 +670,7 @@
 			
 			NSUInteger numberOfSections = [_sections count];
 			for (sectionIndex=0; sectionIndex<numberOfSections; sectionIndex++) {
+				
 				// Get the array of objects in the section
 				BSFetchedResultsControllerSection *aSection = [(NSArray *)_sections objectAtIndex:sectionIndex];
 				sectionObjects = [NSMutableArray arrayWithArray:aSection.objects];
@@ -657,7 +686,7 @@
 					key = aSection.key;
 					break;
 				}
-			}		
+			}
 		}
 					
 		// Remove the object from the various arrays
@@ -686,16 +715,18 @@
 		// Resort the objects within the section		
 		NSMutableArray *sortedObjs = [dic objectForKey:key];
 		[sortedObjs sortUsingDescriptors:[_fetchRequest sortDescriptors]];
-		if(self.postFetchComparator) {
+		if (self.postFetchComparator) {
 			[sortedObjs sortUsingComparator:self.postFetchComparator];
-		}		
+		}
 		[dic setObject:sortedObjs forKey:key];
 		
 		// Create a Section object
 		BSFetchedResultsControllerSection *aSection = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
-		aSection.key = key;
-		[aSection setName:[key capitalizedString]];
-		[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];
+		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+			aSection.key = key;
+			[aSection setName:[key capitalizedString]];
+			[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];			
+		}
 		[aSection setObjects:sortedObjs];
 		[theSections addObject:aSection];
 		
@@ -710,20 +741,19 @@
 			[removedSections setObject:[_sections objectAtIndex:sectionIndex] forKey:[NSNumber numberWithInteger:sectionIndex]];
 		}
 	}
-		
-	// Update the sections
+
 	// Update the section objects
 	[_sections release];
 	_sections = [[NSArray alloc] initWithArray:theSections];
-	
+
 	// Update the sectionIndexTitles
 	[_sectionIndexTitles release];
 	_sectionIndexTitles = [[NSArray alloc] initWithArray:[_sections valueForKeyPath:@"indexTitle"]];
-	
+
 	// Update the sorted section names
 	[_sortedSectionNames release];
 	_sortedSectionNames = [[NSArray alloc] initWithArray:updatedSectionNames];		
-	
+
 	// Update the fetchedResults array
 	[_fetchedObjects release];
 	_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];	
@@ -753,9 +783,15 @@
 	// Loop through the array of objects
 	
 	for(id obj in objs) {
-	
-		// First check to see if the object is in the section it currently has
-		NSString *key = [obj valueForKeyPath:_sectionNameKeyPath];
+			
+		// Get the key
+		// If there isn't a section key path, use the default key
+		NSString *key = nil;		
+		if(_sectionNameKeyPath) {
+			key = [obj valueForKeyPath:_sectionNameKeyPath];
+		} else {
+			key = kBSFetchedResultsControllerDefaultSectionName;
+		}
 		
 		if ( ![[dic objectForKey:key] containsObject:obj] ) {
 
@@ -767,7 +803,7 @@
 			// We need to find it by looking through all the sections
 			NSUInteger rowIndex = 0;
 			NSString *oldKey = nil;
-			BOOL stop = NO;
+			BOOL flag = NO;
 			for (NSString *aKey in dic) {
 				// Get the array of objects in the section
 				oldSectionObjects = [dic objectForKey:aKey];
@@ -782,13 +818,13 @@
 				if ([indexes count] > 0) {
 					rowIndex = [indexes firstIndex];
 					oldKey = aKey;
-					stop = YES;
+					flag = YES;
 					break;
 				}
 			}
 			
 			// Check the flag
-			if (stop) {
+			if (flag) {
 				
 				// Add the old index path of the object to the moved objects dictionary.
 				// We put the obj in the object to avoid performing a copy.
@@ -838,25 +874,28 @@
 	NSMutableArray *theSections = [NSMutableArray array];
 	NSMutableArray *allObjects = [NSMutableArray array];
 	
-	for(NSString *sectionObj in updatedSectionNames) {
+	for(NSString *key in updatedSectionNames) {
 		
 		// Resort the objects within the section		
-		NSMutableArray *sortedObjs = [dic objectForKey:sectionObj];
+		NSMutableArray *sortedObjs = [dic objectForKey:key];
 		[sortedObjs sortUsingDescriptors:[_fetchRequest sortDescriptors]];
 		if(self.postFetchComparator) {
 			[sortedObjs sortUsingComparator:self.postFetchComparator];
 		}		
-		[dic setObject:sortedObjs forKey:sectionObj];
+		[dic setObject:sortedObjs forKey:key];
 		
 		// Create a Section object
 		BSFetchedResultsControllerSection *aSection = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
-		[aSection setName:[sectionObj capitalizedString]];
-		[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];
+		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+			aSection.key = key;
+			[aSection setName:[key capitalizedString]];
+			[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];			
+		}
 		[aSection setObjects:sortedObjs];
 		[theSections addObject:aSection];
 		
 		// See if this is a new section
-		if (![_sortedSectionNames containsObject:sectionObj]) {
+		if (![_sortedSectionNames containsObject:key]) {
 			[addedSections addObject:aSection];
 		}		
 		// Add all the objects

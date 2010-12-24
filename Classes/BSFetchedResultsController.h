@@ -25,11 +25,11 @@
  Additionally, it is possible to alter the NSFetchRequest, and force a refresh of
  the fetched data.
  
- 
- 
  */
 
 #import <Foundation/Foundation.h>
+
+extern NSString * const kBSFetchedResultsControllerDefaultSectionName;
 
 // Define a type for a filter block
 typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop);
