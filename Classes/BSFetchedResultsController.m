@@ -29,7 +29,6 @@ NSString *const kBSFRCSectionCacheNameKey = @"kBSFRCSectionCacheNameKey";
 NSString *const kBSFRCSectionCacheIndexTitleKey = @"kBSFRCSectionCacheIndexTitleKey";
 NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
-
 #pragma mark NSArray categories
 
 // Add a category to NSArray to filter using such a filter block
@@ -269,6 +268,11 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 
 
+
+
+
+
+
 #pragma mark -
 #pragma mark BSFetchedResultsController
 
@@ -331,6 +335,9 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		_sectionsByName = nil;
 		_fetchedObjects = nil;
 		
+		// Dispatch queue used for queuing DidChange notifications
+		didChangeQueue = dispatch_queue_create("com.blindingskies.bsfrc", NULL);	
+		
 		// Register for notifications
 		[self registerNotificationHandlers];
 		handlingChange = NO;
@@ -339,6 +346,8 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 }
 
 - (void)dealloc {
+	// Release the dispatch queue
+	dispatch_release(didChangeQueue);	
 	[self removeNotificationHandlers];
 	[_managedObjectContext release];
 	[_fetchRequest release];
@@ -360,10 +369,30 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		NSLog(@"Successfully validated cache");
 		
 		// Copy objects over from the cache
-		_sections = [_cache sections];
+		_sections = [[NSArray alloc] initWithArray:[_cache sections]];
+		NSMutableArray *allObjects = [NSMutableArray array];
+		NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithCapacity:[_sections count]];
+		for(BSFetchedResultsControllerSection *section in _sections) {
+			[dic setObject:[NSMutableArray arrayWithArray:[section objects]] forKey:section.key];
+			// Add all the objects
+			[allObjects addObjectsFromArray:[section objects]];
+		}
+
+		// Update the sortedSectionNames
+		[_sortedSectionNames release];
+		_sortedSectionNames = [[NSArray alloc] initWithArray:[[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];	
 		
+		// Update the sectionIndexTitles
+		[_sectionIndexTitles release];
+		_sectionIndexTitles = [[NSArray alloc] initWithArray:[_sections valueForKeyPath:@"indexTitle"]];
 		
+		// Update the _sectionsByName dictionary
+		[_sectionsByName release];
+		_sectionsByName = [[NSDictionary alloc] initWithDictionary:dic];	
 		
+		// Update the fetchedResults array
+		[_fetchedObjects release];
+		_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];
 		
 		return YES;
 	}
@@ -474,22 +503,13 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
-	NSString *path = [NSString stringWithFormat:@"%@/%@/%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName, kBSFetchedResultsControllerSectionInfoCacheName];
-/*	
-	// First check to see if a file exists at this path
-	NSURL *url = [NSURL fileURLWithPath:path isDirectory:NO];
-	NSError *error = nil;
-	if ( ![url checkResourceIsReachableAndReturnError:&error]) {
-		NSLog(@"Section Info Cache doesn't exist");
-		return NO;
-	}
-*/	
+	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
+
 	// First of all we need to decode the cache
 	_cache = (BSFetchedResultsControllerSectionInfoCache *)[NSKeyedUnarchiver unarchiveObjectWithFile:path];
-	
+
 	// Now we need to check to see if the various properties are the same
 	if( ![[[_fetchRequest entity] name] isEqual:[((BSFetchedResultsControllerSectionInfoCache *)_cache).entity name]]) {
-		NSLog(@"fetchRequest entity's versionHash: \n%@\t\t archived version hash: \n%@", [[[_fetchRequest entity] versionHash] description], [[[_cache entity] versionHash] description]);
 		NSLog(@"Cache difference: fetch request's entity");
 		return NO;
 	}
@@ -546,14 +566,14 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
-	NSString *path = [NSString stringWithFormat:@"%@/%@/%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName, kBSFetchedResultsControllerSectionInfoCacheName];
+	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
 	
 	// First check to see if a file exists at this path
 	NSURL *url = [NSURL fileURLWithPath:path isDirectory:NO];
 	NSError *error = nil;
 	if ( ![url checkResourceIsReachableAndReturnError:&error]) {
 
-		if(![[NSFileManager defaultManager] createDirectoryAtPath:[NSString stringWithFormat:@"%@/%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName] withIntermediateDirectories:YES attributes:nil error:&error]) {
+		if(![[NSFileManager defaultManager] createDirectoryAtPath:[NSString stringWithFormat:@"%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath] withIntermediateDirectories:YES attributes:nil error:&error]) {
 			NSArray *detailedErrors = [[error userInfo] objectForKey:NSDetailedErrorsKey];
 			if(detailedErrors != nil && [detailedErrors count] > 0) {
 				for(NSError *detailedError in detailedErrors) {
@@ -591,249 +611,275 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 // Add notification handlers to NSNotificationCenter
 - (void)registerNotificationHandlers {
-	
-	if(!didChangeNotificationHandler) {
-		NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+			
+	// Various block definitions that we add to the queue for each notification
+	void (^insertHandler)(NSSet *insertedObjects) = ^(NSSet *insertedObjects) {
 		
-		/*	Register to receive DidChangeNotifications - we then analsye the contents of 
-			the Inserted, Deleted and Updated objects to merge the changes with our cache
-			and if set inform the delegate of the processed changes.
-		 */		 
-		 
-		didChangeNotificationHandler = [nc addObserverForName:NSManagedObjectContextObjectsDidChangeNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
+		// Update the sectioned objects
+		NSMutableArray *addedSections = [self addFetchedObjects:[insertedObjects allObjects]];
+		
+		if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
 			
-			// This is the notification block, here we need to analyse the inserted, updated and deleted objects
-			// and see how they impact our fetched results
-			
-			if(handlingChange) return;
-			
-			// Set that we're handing a change
-			handlingChange = YES;
-			
-			// If we don't have a delegate, then we can return now
-			if (!self.delegate && !self.cacheName) return;
-			
-			// Get the user info dictionary
-			NSDictionary *userInfo = [aNotification userInfo];
-			
-			// Create a compound predicate containing an entity based predicate, the fetch request's predicate
-			// and if present a post fetch filter predicate
-			NSPredicate *entityType = [NSPredicate predicateWithFormat:@"entity == %@", [_fetchRequest entity]]; 
-			NSMutableArray *predicates = [NSMutableArray arrayWithObjects:entityType, nil];
-			if([_fetchRequest predicate]) {
-				[predicates addObject:[_fetchRequest predicate]];
-			}
-			if(self.postFetchFilterPredicate) {
-				[predicates addObject:self.postFetchFilterPredicate];
-			}
-			NSPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
-			
-			
-			// -- INSERTED OBJECTS -- //
-			
-			// Look for inserted objects
-			NSSet *insertedObjects = [[userInfo objectForKey:NSInsertedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
-			if(self.postFetchFilterTest) {
-				insertedObjects = [insertedObjects objectsPassingTest:self.postFetchFilterTest];
-			}			
-			
-			// If we've got inserted objects...
-			if ([insertedObjects count] > 0) {
-								
-				// Update the sectioned objects
-				NSMutableArray *addedSections = [self addFetchedObjects:[insertedObjects allObjects]];
-								
-				// Inform the delegate that we're about to change content
-				if([self.delegate respondsToSelector:@selector(controllerWillChangeContent:)])
-					[self.delegate controllerWillChangeContent:self];
-
-				if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
-
-					// Iterate through the inserted cells
-					for(id obj in insertedObjects) {
-						
-						// Get the index path for this object 
-						NSIndexPath *indexPath = [self indexPathForObject:obj];
-						
-						// Get the sectional object for this object
-						BSFetchedResultsControllerSection *aSection = [(NSArray *)_sections objectAtIndex:indexPath.section];
-						
-						// Check to see if this obj resulted in an added section
-						if ([addedSections containsObject:aSection]) {
-							
-							// We need to tell the delegate to insert a section
-							[self.delegate controller:self 
-									 didChangeSection:aSection 
-											  atIndex:indexPath.section 
-										forChangeType:NSFetchedResultsChangeInsert];
-							
-							// Now that we've inserted the section, remove it from the array
-							[addedSections removeObject:aSection];							
-						}						
-						
-						[self.delegate controller:self 
-								  didChangeObject:obj 
-									  atIndexPath:nil 
-									forChangeType:NSFetchedResultsChangeInsert 
-									 newIndexPath:indexPath];							
-					}					
-				}				
+			// Iterate through the inserted cells
+			for(id obj in insertedObjects) {
 				
-				// Inform the delegate that we've finished changing content
-				if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
-					[self.delegate controllerDidChangeContent:self];				
-			}
-			
-			
-			// -- DELETED OBJECTS -- //
-			
-			// Look for deleted objects
-			NSSet *deletedObjects = [[userInfo objectForKey:NSDeletedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
-			if(self.postFetchFilterTest) {
-				deletedObjects = [deletedObjects objectsPassingTest:self.postFetchFilterTest];
-			}
-			
-			// If we've got deleted objects...
-			if ([deletedObjects count] > 0) {
-								
-				// Inform the delegate that we're about to change content
-				if([self.delegate respondsToSelector:@selector(controllerWillChangeContent:)])
-					[self.delegate controllerWillChangeContent:self];
-
-				if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
-					
-					// Iterate through the deleted cells
-					for(id obj in deletedObjects) {
-						// Get the index path for this object 
-						NSIndexPath *indexPath = [self indexPathForObject:obj];
-						
-						[self.delegate controller:self 
-								  didChangeObject:obj 
-									  atIndexPath:indexPath 
-									forChangeType:NSFetchedResultsChangeDelete 
-									 newIndexPath:nil];
-					}					
-				}				
+				// Get the index path for this object 
+				NSIndexPath *indexPath = [self indexPathForObject:obj];
 				
-				// Remove the deleted objects
-				NSDictionary *removedSections = [self removeFetchedObjects:[deletedObjects allObjects]];				
+				// Get the sectional object for this object
+				BSFetchedResultsControllerSection *aSection = [(NSArray *)_sections objectAtIndex:indexPath.section];
 				
-				for(BSFetchedResultsControllerSection *aSection in [removedSections allValues]) {
-					
-					// Get the index of the section
-					NSUInteger sectionIndex = [[[removedSections allKeysForObject:aSection] lastObject] integerValue];
-					
-					// Inform the delegate that we've got to remove this section
-					[self.delegate controller:self 
-							 didChangeSection:aSection 
-									  atIndex:sectionIndex 
-								forChangeType:NSFetchedResultsChangeDelete];
-					
-				}
-				
-				// Inform the delegate that we've finished changing content
-				if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
-					[self.delegate controllerDidChangeContent:self];				
-			}
-			
-			// -- UPDATED OBJECTS -- //
-			
-			// Look for updated objects
-			NSSet *updatedObjects = [[userInfo objectForKey:NSUpdatedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
-			if(self.postFetchFilterTest) {
-				updatedObjects = [updatedObjects objectsPassingTest:self.postFetchFilterTest];
-			}
-			
-			// If we've got updated objects...
-			if([updatedObjects count] > 0) {
-								
-				// Update the sectional information
-				NSDictionary *changes = [self updateFetchedObjects:[updatedObjects allObjects]];				
-				
-				// Inform the delegate that we're about to change content
-				if([self.delegate respondsToSelector:@selector(controllerWillChangeContent:)])
-					[self.delegate controllerWillChangeContent:self];				
-				
-				// Perform sectional insertions
-				NSMutableArray *addedSections = [changes objectForKey:@"addedSections"];
-				for(BSFetchedResultsControllerSection *aSection in addedSections) {
+				// Check to see if this obj resulted in an added section
+				if ([addedSections containsObject:aSection]) {
 					
 					// We need to tell the delegate to insert a section
 					[self.delegate controller:self 
 							 didChangeSection:aSection 
-									  atIndex:[_sections indexOfObject:aSection] 
-								forChangeType:NSFetchedResultsChangeInsert];					
-				}
+									  atIndex:indexPath.section 
+								forChangeType:NSFetchedResultsChangeInsert];
+					
+					// Now that we've inserted the section, remove it from the array
+					[addedSections removeObject:aSection];							
+				}						
 				
-				if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
-					
-					// Iterate through the deleted cells
-					for(id obj in updatedObjects) {
-
-						// Get the old index
-						NSIndexPath *indexPath = [[[changes objectForKey:@"movedObjects"] allKeysForObject:obj] lastObject];
-						
-						// Get the new index
-						NSIndexPath *newIndexPath = [self indexPathForObject:obj];
-						
-						if([indexPath isEqual:newIndexPath]) {
-							[self.delegate controller:self 
-									  didChangeObject:obj 
-										  atIndexPath:indexPath 
-										forChangeType:NSFetchedResultsChangeUpdate 
-										 newIndexPath:nil];							
-						} else {
-							
-							// The index path of the object which has been updated has changed, so we issue a move then an update
-							// We do it in this order because the update retrieve data from the controller
-							
-							[self.delegate controller:self 
-									  didChangeObject:obj 
-										  atIndexPath:indexPath 
-										forChangeType:NSFetchedResultsChangeMove 
-										 newIndexPath:newIndexPath];							
-							
-							[self.delegate controller:self 
-									  didChangeObject:obj 
-										  atIndexPath:newIndexPath 
-										forChangeType:NSFetchedResultsChangeUpdate 
-										 newIndexPath:nil];
-							
-						}						
-					}
-				}				
-
-				// Perform sectional deletions
-				NSDictionary *removedSections = [changes objectForKey:@"removedSections"];
-				for(BSFetchedResultsControllerSection *aSection in [removedSections allValues]) {
-					
-					// Get the index of the section
-					NSUInteger sectionIndex = [[[removedSections allKeysForObject:aSection] lastObject] integerValue];
-					
-					// Inform the delegate that we've got to remove this section
-					[self.delegate controller:self 
-							 didChangeSection:aSection 
-									  atIndex:sectionIndex 
-								forChangeType:NSFetchedResultsChangeDelete];
-					
-				}
-				
-				// Inform the delegate that we've finished changing content
-				if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
-					[self.delegate controllerDidChangeContent:self];
+				[self.delegate controller:self 
+						  didChangeObject:obj 
+							  atIndexPath:nil 
+							forChangeType:NSFetchedResultsChangeInsert 
+							 newIndexPath:indexPath];							
 			}
+		}
+				
+	};
+	
+	void (^removeHandler)(NSSet *removedObjects) = ^(NSSet *removedObjects) {
+		
+		if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
 			
-			// Set that we've finished handing a change
-			handlingChange = NO;			
-		}];
-	}
+			// Iterate through the deleted cells
+			for(id obj in removedObjects) {
+				// Get the index path for this object 
+				NSIndexPath *indexPath = [self indexPathForObject:obj];
+				
+				[self.delegate controller:self 
+						  didChangeObject:obj 
+							  atIndexPath:indexPath 
+							forChangeType:NSFetchedResultsChangeDelete 
+							 newIndexPath:nil];
+			}					
+		}				
+		
+		// Remove the deleted objects
+		NSDictionary *removedSections = [self removeFetchedObjects:[removedObjects allObjects]];				
+		
+		for(BSFetchedResultsControllerSection *aSection in [removedSections allValues]) {
+			
+			// Get the index of the section
+			NSUInteger sectionIndex = [[[removedSections allKeysForObject:aSection] lastObject] integerValue];
+			
+			// Inform the delegate that we've got to remove this section
+			[self.delegate controller:self 
+					 didChangeSection:aSection 
+							  atIndex:sectionIndex 
+						forChangeType:NSFetchedResultsChangeDelete];
+			
+		}
+		
+	};
+	
+	void (^updatedHandler)(NSSet *updatedObjects) = ^(NSSet *updatedObjects) {
+		
+		// Update the sectional information
+		NSDictionary *changes = [self updateFetchedObjects:[updatedObjects allObjects]];				
+		
+		// Perform sectional insertions
+		NSMutableArray *addedSections = [changes objectForKey:@"addedSections"];
+		for(BSFetchedResultsControllerSection *aSection in addedSections) {
+			
+			// We need to tell the delegate to insert a section
+			[self.delegate controller:self 
+					 didChangeSection:aSection 
+							  atIndex:[_sections indexOfObject:aSection] 
+						forChangeType:NSFetchedResultsChangeInsert];					
+		}
+		
+		if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
+			
+			// Iterate through the deleted cells
+			for(id obj in updatedObjects) {
+				
+				// Get the old index
+				NSIndexPath *indexPath = [[[changes objectForKey:@"movedObjects"] allKeysForObject:obj] lastObject];
+				
+				// Get the new index
+				NSIndexPath *newIndexPath = [self indexPathForObject:obj];
+				
+				if([indexPath isEqual:newIndexPath]) {
+					[self.delegate controller:self 
+							  didChangeObject:obj 
+								  atIndexPath:indexPath 
+								forChangeType:NSFetchedResultsChangeUpdate 
+								 newIndexPath:nil];							
+				} else {
+					
+					// The index path of the object which has been updated has changed, so we issue a move then an update
+					// We do it in this order because the update retrieve data from the controller
+					
+					[self.delegate controller:self 
+							  didChangeObject:obj 
+								  atIndexPath:indexPath 
+								forChangeType:NSFetchedResultsChangeMove 
+								 newIndexPath:newIndexPath];							
+					
+					[self.delegate controller:self 
+							  didChangeObject:obj 
+								  atIndexPath:newIndexPath 
+								forChangeType:NSFetchedResultsChangeUpdate 
+								 newIndexPath:nil];
+					
+				}						
+			}
+		}				
+		
+		// Perform sectional deletions
+		NSDictionary *removedSections = [changes objectForKey:@"removedSections"];
+		for(BSFetchedResultsControllerSection *aSection in [removedSections allValues]) {
+			
+			// Get the index of the section
+			NSUInteger sectionIndex = [[[removedSections allKeysForObject:aSection] lastObject] integerValue];
+			
+			// Inform the delegate that we've got to remove this section
+			[self.delegate controller:self 
+					 didChangeSection:aSection 
+							  atIndex:sectionIndex 
+						forChangeType:NSFetchedResultsChangeDelete];
+			
+		}
+		
+	};
+	
+	
+	NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+	
+	/*	Register to receive DidChangeNotifications - we then analsye the contents of 
+	 the Inserted, Deleted and Updated objects to merge the changes with our cache
+	 and if set inform the delegate of the processed changes.
+	 */		 
+	
+	didChangeNotificationHandler = [nc addObserverForName:NSManagedObjectContextObjectsDidChangeNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
+		
+		// If we don't have a delegate or a cache, then we can return now
+		if (!self.delegate && !self.cacheName) return;
+		
+		// Get the user info dictionary
+		NSDictionary *userInfo = [aNotification userInfo];
+		
+		// Create a compound predicate containing an entity based predicate, the fetch request's predicate
+		// and if present a post fetch filter predicate
+		NSPredicate *entityType = [NSPredicate predicateWithFormat:@"entity == %@", [_fetchRequest entity]]; 
+		NSMutableArray *predicates = [NSMutableArray arrayWithObjects:entityType, nil];
+		if([_fetchRequest predicate]) {
+			[predicates addObject:[_fetchRequest predicate]];
+		}
+		if(self.postFetchFilterPredicate) {
+			[predicates addObject:self.postFetchFilterPredicate];
+		}
+		NSPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
+				
+		
+		
+		
+		
+		// -- INSERTED OBJECTS -- //		
+
+		NSSet *insertedObjects = [[userInfo objectForKey:NSInsertedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
+		if(self.postFetchFilterTest) {
+			insertedObjects = [insertedObjects objectsPassingTest:self.postFetchFilterTest];
+		}			
+		
+		// If we've got inserted objects...
+		if ([insertedObjects count] > 0) {
+		
+			// Inform the delegate that we're about to change content
+			if([self.delegate respondsToSelector:@selector(controllerWillChangeContent:)])
+				[self.delegate controllerWillChangeContent:self];
+			
+			// Call our insert handler
+			insertHandler(insertedObjects);
+
+			// Inform the delegate that we've finished changing content
+			if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
+				[self.delegate controllerDidChangeContent:self];
+			
+		}
+		
+		
+		
+		// -- DELETED OBJECTS -- //
+
+		NSSet *deletedObjects = [[userInfo objectForKey:NSDeletedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
+		if(self.postFetchFilterTest) {
+			deletedObjects = [deletedObjects objectsPassingTest:self.postFetchFilterTest];
+		}
+		
+		// If we've got deleted objects...
+		if ([deletedObjects count] > 0) {
+
+			// Inform the delegate that we're about to change content
+			if([self.delegate respondsToSelector:@selector(controllerWillChangeContent:)])
+				[self.delegate controllerWillChangeContent:self];
+			
+			// Call our remove handler
+			removeHandler(deletedObjects);
+
+			// Inform the delegate that we've finished changing content
+			if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
+				[self.delegate controllerDidChangeContent:self];
+			
+		}
+		
+		
+		
+		// -- UPDATED OBJECTS -- //
+
+		NSSet *updatedObjects = [[userInfo objectForKey:NSUpdatedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
+		if(self.postFetchFilterTest) {
+			updatedObjects = [updatedObjects objectsPassingTest:self.postFetchFilterTest];
+		}
+		
+		// If we've got updated objects...
+		if([updatedObjects count] > 0) {
+			
+			// Inform the delegate that we're about to change content
+			if([self.delegate respondsToSelector:@selector(controllerWillChangeContent:)])
+				[self.delegate controllerWillChangeContent:self];
+			
+			// Call our update handler
+			updatedHandler(updatedObjects);
+
+			// Inform the delegate that we've finished changing content
+			if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
+				[self.delegate controllerDidChangeContent:self];
+		}
+				
+	}];
+	
+	// Register to save the cache on did save
+	didSaveNotificationHandler = [nc addObserverForName:NSManagedObjectContextDidSaveNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
+		// Update the cache
+		[self flushCache];
+	}];
+	
 }
 
 // Remove the notification handlers from the NSNotificationCenter
 - (void)removeNotificationHandlers {
+	NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];	
 	if(didChangeNotificationHandler) {
-		NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
 		[nc removeObserver:didChangeNotificationHandler];		
+	}
+	if(didSaveNotificationHandler) {
+		[nc removeObserver:didSaveNotificationHandler];
 	}
 }
 

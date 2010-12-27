@@ -106,6 +106,8 @@
 		}
 	}	
 	
+	NSLog(@"Inserting %@ (%@)", aCity.name, aState.name);
+	
     // Save the context.
     NSError *error = nil;
     if (![context save:&error]) {

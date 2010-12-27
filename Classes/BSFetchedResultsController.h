@@ -74,10 +74,10 @@ NS_CLASS_AVAILABLE(NA, 3_0)
 	id _sectionIndexTitles;
 	id _sectionIndexTitlesSections;	
 
+	// Additional objects	
 	
-	
-	
-	// Additional objects
+	// Dispatch queue used for queuing DidChange notifications
+	dispatch_queue_t didChangeQueue;
 	
 	// A predicate used to filter the fetched objects. This is usefuly because
 	// the predicate an NSFetchRequest uses is only able to follow object keypaths
@@ -95,6 +95,7 @@ NS_CLASS_AVAILABLE(NA, 3_0)
 	
 	// Notification Handlers
 	id didChangeNotificationHandler;
+	id didSaveNotificationHandler;
 	BOOL handlingChange;
 	
 }
