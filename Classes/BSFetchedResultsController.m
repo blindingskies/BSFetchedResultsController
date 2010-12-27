@@ -8,7 +8,27 @@
 
 #import "BSFetchedResultsController.h"
 
+// String constants
 NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Section";
+NSString * const kBSFetchedResultsControllerCachePath = @"BSFetchedResultsControllerCache";
+NSString * const kBSFetchedResultsControllerSectionInfoCacheName = @"SectionInfo.cache";
+NSString * const kBSFetchedResultsControllerFetchedObjectsCacheName = @"FetchedObjects.cache";
+// SectionInfo Cache archive keys
+NSString * const kBSFRCSectionInfoCacheFetchRequestKey = @"kBSFRCSectionInfoCacheFetchRequestKey";
+NSString * const kBSFRCSectionInfoCacheFetchRequestEntityKey = @"kBSFRCSectionInfoCacheFetchRequestEntityKey";
+NSString * const kBSFRCSectionInfoCacheFetchRequestPredicateKey = @"kBSFRCSectionInfoCacheFetchRequestPredicateKey";
+NSString * const kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey = @"kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey";
+NSString * const kBSFRCSectionInfoCacheSectionNameKeyPathKey = @"kBSFRCSectionInfoCacheSectionNameKeyPathKey";
+NSString * const kBSFRCSectionInfoCacheSectionsKey = @"kBSFRCSectionInfoCacheSectionsKey";
+NSString * const kBSFRCSectionInfoCachePostFetchPredicateKey = @"kBSFRCSectionInfoCachePostFetchPredicateKey";
+NSString * const kBSFRCSectionInfoCachePostFetchFilterKey = @"kBSFRCSectionInfoCachePostFetchFilterKey";
+NSString * const kBSFRCSectionInfoCachePostFetchComparatorKey = @"kBSFRCSectionInfoCachePostFetchComparatorKey";
+// Individual Section cache archive keys
+NSString *const kBSFRCSectionCacheKeyKey = @"kBSFRCSectionCacheKeyKey";
+NSString *const kBSFRCSectionCacheNameKey = @"kBSFRCSectionCacheNameKey";
+NSString *const kBSFRCSectionCacheIndexTitleKey = @"kBSFRCSectionCacheIndexTitleKey";
+NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
+
 
 #pragma mark NSArray categories
 
@@ -44,7 +64,7 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 #pragma mark -
 #pragma mark BSFetchedResultsControllerSection
 
-@interface BSFetchedResultsControllerSection : NSObject <NSFetchedResultsSectionInfo> {
+@interface BSFetchedResultsControllerSection : NSObject <NSFetchedResultsSectionInfo, NSCoding> {
 @private
 	NSString *key;
 	NSString *_name;
@@ -84,10 +104,34 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 @synthesize objects=_objects;
 
 - (void)dealloc {
+	[key release];
 	[_name release];
 	[_indexTitle release];
 	[_objects release];
 	[super dealloc];
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder {
+	self = [super init];
+	if(self) {
+		self.key = [[aDecoder decodeObjectForKey:kBSFRCSectionCacheKeyKey] retain];
+		_name = [[aDecoder decodeObjectForKey:kBSFRCSectionCacheNameKey] retain];
+		_indexTitle = [[aDecoder decodeObjectForKey:kBSFRCSectionCacheIndexTitleKey] retain];
+		// Remember this is just an array of objectIDs, we need to turn them into objects
+		// using a NSManagedObjectContext
+		_objects = [[aDecoder decodeObjectForKey:kBSFRCSectionCacheObjectsKey] retain];
+		_numberOfObjects = [_objects count];		
+	}
+	return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder {
+	[aCoder encodeObject:key forKey:kBSFRCSectionCacheKeyKey];
+	[aCoder encodeObject:_name forKey:kBSFRCSectionCacheNameKey];
+	[aCoder encodeObject:_indexTitle forKey:kBSFRCSectionCacheIndexTitleKey];
+	// We encode the object's objectID instance not the objects themselves.
+	NSArray *objectIDURIReps = [_objects valueForKeyPath:@"objectID.URIRepresentation"];	
+	[aCoder encodeObject:objectIDURIReps forKey:kBSFRCSectionCacheObjectsKey];
 }
 
 - (void)setName:(NSString *)aString {
@@ -118,7 +162,110 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 @end
 
 
+#pragma mark -
+#pragma mark BSFetchedResultsControllerSectionCache
 
+@interface BSFetchedResultsControllerSectionInfoCache : NSObject <NSCoding> {
+@private
+	// Sectional Objects that we cache
+	NSEntityDescription *entity;
+	NSPredicate *fetchPredicate;
+	NSArray *sortDescriptors;
+	NSString *sectionNameKeyPath;
+	NSArray *sections;
+	NSPredicate *postFetchFilterPredicate;
+	BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
+	NSComparator postFetchComparator;
+	
+}
+
+@property (nonatomic, readwrite, retain) NSEntityDescription *entity;
+@property (nonatomic, readwrite, retain) NSPredicate *fetchPredicate;
+@property (nonatomic, readwrite, retain) NSArray *sortDescriptors;
+@property (nonatomic, readwrite, retain) NSString *sectionNameKeyPath;
+@property (nonatomic, readwrite, retain) NSArray *sections;
+@property (nonatomic, readwrite, retain) NSPredicate *postFetchFilterPredicate;
+@property (nonatomic, readwrite, retain) BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
+@property (nonatomic, readwrite, retain) NSComparator postFetchComparator;
+
+- (void)spawnObjectsFromContext:(NSManagedObjectContext *)context;
+
+@end
+
+@implementation BSFetchedResultsControllerSectionInfoCache
+
+@synthesize entity;
+@synthesize fetchPredicate;
+@synthesize sortDescriptors;
+@synthesize sectionNameKeyPath;
+@synthesize sections;
+@synthesize postFetchFilterPredicate;
+@synthesize postFetchFilterTest;
+@synthesize postFetchComparator;
+
+- (void)dealloc {
+	self.entity = nil; [entity release];
+	self.fetchPredicate = nil; [fetchPredicate release];
+	self.sortDescriptors = nil; [sortDescriptors release];
+	self.sectionNameKeyPath = nil; [sectionNameKeyPath release];	
+	self.sections = nil; [sections release];
+	self.postFetchFilterPredicate = nil; [postFetchFilterPredicate release];
+	self.postFetchFilterTest = nil; [postFetchFilterTest release];
+	self.postFetchComparator = nil; [postFetchComparator release];	
+	[super dealloc];
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder {
+	self = [super init];
+	if(self) {
+		
+		self.entity = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheFetchRequestEntityKey];
+		self.fetchPredicate = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheFetchRequestPredicateKey];
+		self.sortDescriptors = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey];
+		self.sectionNameKeyPath = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionNameKeyPathKey];
+		self.postFetchFilterPredicate = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchPredicateKey];
+		self.postFetchFilterTest = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchFilterKey];
+		self.postFetchComparator = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchComparatorKey];
+		self.sections = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionsKey];
+	}
+	return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)aCoder {
+	
+	[aCoder encodeObject:entity forKey:kBSFRCSectionInfoCacheFetchRequestEntityKey];
+	[aCoder encodeObject:fetchPredicate forKey:kBSFRCSectionInfoCacheFetchRequestPredicateKey];
+	[aCoder encodeObject:sortDescriptors forKey:kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey];
+	[aCoder encodeObject:sectionNameKeyPath forKey:kBSFRCSectionInfoCacheSectionNameKeyPathKey];
+	[aCoder encodeObject:postFetchFilterPredicate forKey:kBSFRCSectionInfoCachePostFetchPredicateKey];
+	[aCoder encodeObject:postFetchFilterTest forKey:kBSFRCSectionInfoCachePostFetchFilterKey];
+	[aCoder encodeObject:postFetchComparator forKey:kBSFRCSectionInfoCachePostFetchComparatorKey];
+	[aCoder encodeObject:sections forKey:kBSFRCSectionInfoCacheSectionsKey];
+}
+
+- (void)spawnObjectsFromContext:(NSManagedObjectContext *)context {
+	
+	NSPersistentStoreCoordinator *storeCoordinator = [context persistentStoreCoordinator];
+	
+	// Iterate through the sections
+	for (BSFetchedResultsControllerSection *section in sections) {
+		
+		// Create a NSMutableArray
+		NSArray *objs = [section objects];
+		NSMutableArray *objects = [NSMutableArray arrayWithCapacity:[objs count]];		
+		
+		// Iterate over the objs and turn each one into an object
+		for(NSURL *urlRepresentation in objs) {
+			NSManagedObjectID *objectID = [storeCoordinator managedObjectIDForURIRepresentation:urlRepresentation];
+			[objects addObject:[context objectWithID:objectID]];
+		}
+
+		// Now set this array as the objects array
+		[section setObjects:objects];		
+	}	
+}
+
+@end
 
 
 
@@ -126,6 +273,13 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 #pragma mark BSFetchedResultsController
 
 @interface BSFetchedResultsController ()
+
+// Validates the contents of the cache (given by the cache name)
+// against the properties used to instantiate the controller.
+- (BOOL)validateCache;
+
+// Write everything to the cache
+- (void)flushCache;
 
 // NSManagedObjectContext Notification Handlers
 - (void)registerNotificationHandlers;
@@ -172,6 +326,7 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 		if(aSectionNameKeyPath) {
 			_sectionNameKeyPath = [aSectionNameKeyPath copy];
 		}
+		_cacheName = [aName copy];
 		_sections = nil;		
 		_sectionsByName = nil;
 		_fetchedObjects = nil;
@@ -198,6 +353,21 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 #pragma mark Public Methods
 
 - (BOOL)performFetch:(NSError **)error {
+	
+	// If we have a cache name, check to see if we have a cache
+	// and that it's valid
+	if(_cacheName && [self validateCache]) {
+		NSLog(@"Successfully validated cache");
+		
+		// Copy objects over from the cache
+		_sections = [_cache sections];
+		
+		
+		
+		
+		return YES;
+	}
+	
 	// Perform the fetch
 	NSError *anError = nil;
 	NSArray *results = [_managedObjectContext executeFetchRequest:_fetchRequest error:&anError];	
@@ -227,6 +397,11 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 		// Perform sectioning
 		[self addFetchedObjects:results];
 								
+	}
+	
+	// If we've got a cache name, write to it
+	if(_cacheName) {
+		[self flushCache];
 	}
 		
 	return YES;
@@ -287,12 +462,132 @@ NSString * const kBSFetchedResultsControllerDefaultSectionName = @"Default Secti
 }
 									
 									
-
-#pragma mark -
-#pragma mark Dynamic Methods
-
 #pragma mark -
 #pragma mark Private Methods
+
+// Validates the contents of the cache (given by the cache name)
+// against the properties used to instantiate the controller.
+- (BOOL)validateCache {
+	
+	// Return false if we haven't got a cache name
+	if(!_cacheName) return NO;
+	
+	// Create a path to the cache
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
+	NSString *path = [NSString stringWithFormat:@"%@/%@/%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName, kBSFetchedResultsControllerSectionInfoCacheName];
+/*	
+	// First check to see if a file exists at this path
+	NSURL *url = [NSURL fileURLWithPath:path isDirectory:NO];
+	NSError *error = nil;
+	if ( ![url checkResourceIsReachableAndReturnError:&error]) {
+		NSLog(@"Section Info Cache doesn't exist");
+		return NO;
+	}
+*/	
+	// First of all we need to decode the cache
+	_cache = (BSFetchedResultsControllerSectionInfoCache *)[NSKeyedUnarchiver unarchiveObjectWithFile:path];
+	
+	// Now we need to check to see if the various properties are the same
+	if( ![[[_fetchRequest entity] name] isEqual:[((BSFetchedResultsControllerSectionInfoCache *)_cache).entity name]]) {
+		NSLog(@"fetchRequest entity's versionHash: \n%@\t\t archived version hash: \n%@", [[[_fetchRequest entity] versionHash] description], [[[_cache entity] versionHash] description]);
+		NSLog(@"Cache difference: fetch request's entity");
+		return NO;
+	}
+
+	if ((((BSFetchedResultsControllerSectionInfoCache *)_cache).fetchPredicate && [_fetchRequest predicate]) &&
+		![[_fetchRequest predicate] isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).fetchPredicate]) {
+		NSLog(@"Cache difference: fetch request's predicate");
+		return NO;
+	}
+
+	if ((((BSFetchedResultsControllerSectionInfoCache *)_cache).sortDescriptors && [_fetchRequest sortDescriptors]) &&
+		![[_fetchRequest sortDescriptors] isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).sortDescriptors]) {
+		NSLog(@"Cache difference: fetch request's sort descriptors");
+		return NO;
+	}	
+	
+	if( _sectionNameKeyPath && ![_sectionNameKeyPath isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).sectionNameKeyPath]) {
+		NSLog(@"Cache difference: section name key path");
+		return NO;
+	}
+	
+	if( postFetchFilterPredicate && ![postFetchFilterPredicate isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterPredicate]) {
+		NSLog(@"Cache difference: post fetch filter predicate");
+		return NO;
+	}
+
+	if( postFetchFilterTest && ![postFetchFilterTest isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterTest]) {
+		NSLog(@"Cache difference: post fetch filter test");
+		return NO;
+	}
+
+	if( postFetchComparator && ![postFetchComparator isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchComparator]) {
+		NSLog(@"Cache difference: post fetch comparator");
+		return NO;
+	}	
+	
+	NSLog(@"Cache seems to be the same");
+	
+	// If we've got this far then all the various objects which define the controller match the cache
+	// so, assuming that the cache has kept up to date we can start using it again.
+	
+	// First we need to turn our objectIDs into proper NSManagedObject instances
+	[(BSFetchedResultsControllerSectionInfoCache *)_cache spawnObjectsFromContext:self.managedObjectContext];	
+	
+	return YES;
+}
+
+
+// Write everything to the cache
+- (void)flushCache {
+
+	// Return if we haven't got a cache name
+	if(!_cacheName) return;
+	
+	// Create a path to the cache
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
+	NSString *path = [NSString stringWithFormat:@"%@/%@/%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName, kBSFetchedResultsControllerSectionInfoCacheName];
+	
+	// First check to see if a file exists at this path
+	NSURL *url = [NSURL fileURLWithPath:path isDirectory:NO];
+	NSError *error = nil;
+	if ( ![url checkResourceIsReachableAndReturnError:&error]) {
+
+		if(![[NSFileManager defaultManager] createDirectoryAtPath:[NSString stringWithFormat:@"%@/%@/%@", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName] withIntermediateDirectories:YES attributes:nil error:&error]) {
+			NSArray *detailedErrors = [[error userInfo] objectForKey:NSDetailedErrorsKey];
+			if(detailedErrors != nil && [detailedErrors count] > 0) {
+				for(NSError *detailedError in detailedErrors) {
+					NSLog(@"  DetailedError: %@", [detailedError userInfo]);
+				}
+			}
+			else {
+				NSLog(@"  %@", [error userInfo]);
+			}
+			return;
+		}
+	}
+	
+	
+	// Create a SectionInfoCache object
+	_cache = (BSFetchedResultsControllerSectionInfoCache *)[[BSFetchedResultsControllerSectionInfoCache alloc] init];
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).entity = [_fetchRequest entity];
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).fetchPredicate = [_fetchRequest predicate];
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).sortDescriptors = [_fetchRequest sortDescriptors];
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).sectionNameKeyPath = _sectionNameKeyPath;
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).sections = _sections;
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterPredicate = postFetchFilterPredicate;
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterTest = postFetchFilterTest;
+	((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchComparator = postFetchComparator;	
+	
+	// Encode the cache
+	
+	if( ![NSKeyedArchiver archiveRootObject:_cache toFile:path] ) {
+		NSLog(@"Archive failed...");
+	}
+	
+}
+
+
 
 // Add notification handlers to NSNotificationCenter
 - (void)registerNotificationHandlers {

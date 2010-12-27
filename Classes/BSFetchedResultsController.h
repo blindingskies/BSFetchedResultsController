@@ -30,6 +30,25 @@
 #import <Foundation/Foundation.h>
 
 extern NSString * const kBSFetchedResultsControllerDefaultSectionName;
+extern NSString * const kBSFetchedResultsControllerCachePath;
+extern NSString * const kBSFetchedResultsControllerSectionInfoCacheName;
+extern NSString * const kBSFetchedResultsControllerFetchedObjectsCacheName;
+// SectionInfo Cache archive keys
+extern NSString * const kBSFRCSectionInfoCacheFetchRequestKey;
+extern NSString * const kBSFRCSectionInfoCacheFetchRequestEntityKey;
+extern NSString * const kBSFRCSectionInfoCacheFetchRequestPredicateKey;
+extern NSString * const kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey;
+extern NSString * const kBSFRCSectionInfoCacheSectionNameKeyPathKey;
+extern NSString * const kBSFRCSectionInfoCacheSectionsKey;
+extern NSString * const kBSFRCSectionInfoCachePostFetchPredicateKey;
+extern NSString * const kBSFRCSectionInfoCachePostFetchFilterKey;
+extern NSString * const kBSFRCSectionInfoCachePostFetchComparatorKey;
+// Individual Section cache archive keys
+extern NSString *const kBSFRCSectionCacheKeyKey;
+extern NSString *const kBSFRCSectionCacheNameKey;
+extern NSString *const kBSFRCSectionCacheIndexTitleKey;
+extern NSString *const kBSFRCSectionCacheObjectsKey;
+
 
 // Define a type for a filter block
 typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop);
@@ -45,9 +64,8 @@ NS_CLASS_AVAILABLE(NA, 3_0)
 	NSManagedObjectContext *_managedObjectContext;
 	NSString *_sectionNameKeyPath;
 	NSString *_sectionNameKey;
-	NSString *_cacheName;
-	
-	// We need to define the cache object here too
+	NSString *_cacheName;	
+	id _cache;
 	id _delegate;	
 	id _fetchedObjects;
 	id _sections;
