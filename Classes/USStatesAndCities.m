@@ -28,4 +28,25 @@ SYNTHESIZE_SINGLETON_FOR_CLASS(USStatesAndCities);
 	return self;
 }
 
+- (NSDictionary *)randomCity {
+	
+	NSArray *theStates = [self.states allKeys];
+	NSUInteger count = [theStates count];
+	NSUInteger randomIndex = (NSUInteger)arc4random() % count;
+
+	// State data
+	NSDictionary *stateData = [self.states objectForKey:[theStates objectAtIndex:randomIndex]];
+	count = [[stateData objectForKey:@"StateCities"] count];
+	randomIndex = (NSUInteger)arc4random() % count;
+	NSDictionary *cityData = [[stateData objectForKey:@"StateCities"] objectAtIndex:randomIndex];
+	
+	return [NSDictionary dictionaryWithObjectsAndKeys:
+			[cityData objectForKey:@"CityName"], @"CityName",
+			[cityData objectForKey:@"CityPopulation"], @"CityPopulation",			
+			[stateData objectForKey:@"StateName"], @"StateName",
+			[cityData objectForKey:@"isCapital"], @"isCapital",			
+			nil];
+	
+}
+
 @end

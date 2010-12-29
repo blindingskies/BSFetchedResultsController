@@ -15,6 +15,14 @@ static NSArray *populationSortDescriptors = nil;
 	}
 }	
 
++ (BOOL)stateExistsWithName:(NSString *)aStateName inContext:(NSManagedObjectContext *)context {
+	NSParameterAssert(aStateName);
+	NSParameterAssert(context);
+	
+	State *aState = [[context fetchObjectsForEntityName:@"State" withPredicate:@"name == %@", aStateName] anyObject];
+	return (aState != nil);
+}
+
 + (State *)stateWithName:(NSString *)aStateName inContext:(NSManagedObjectContext *)context {
 	NSParameterAssert(aStateName);
 	NSParameterAssert(context);

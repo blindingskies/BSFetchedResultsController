@@ -17,5 +17,8 @@
 @property (nonatomic, readonly) NSDictionary *states;
 
 + (USStatesAndCities *)sharedUSStatesAndCities;
+
+- (NSDictionary *)randomCity;
+
 	
 @end
