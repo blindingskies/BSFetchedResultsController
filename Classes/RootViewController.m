@@ -33,6 +33,11 @@
     UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(insertNewObject)];
     self.navigationItem.rightBarButtonItem = addButton;
     [addButton release];
+	
+	formatter = [[NSNumberFormatter alloc] init];
+	[formatter setNumberStyle:kCFNumberFormatterDecimalStyle];
+	[formatter setAllowsFloats:NO];
+	[formatter setPerMillSymbol:@","];
 }
 
 
@@ -70,7 +75,13 @@
 - (void)configureCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath {
   
 	City *city = [self.fetchedResultsController objectAtIndexPath:indexPath];
+	if(city.isCapitalValue) {
+		cell.textLabel.font = [UIFont boldSystemFontOfSize:[UIFont labelFontSize]]; 
+	} else {
+		cell.textLabel.font = [UIFont systemFontOfSize:[UIFont labelFontSize]];
+	}
 	cell.textLabel.text = city.name;
+	cell.detailTextLabel.text = [formatter stringFromNumber:city.population];
 
 }
 
@@ -88,25 +99,22 @@
 	// Get our datastore
 	USStatesAndCities *datastore = [USStatesAndCities sharedUSStatesAndCities];
 	
-	// Select a  state
-	NSUInteger count = [[datastore.states allKeys] count];
-	NSString *randomStateName = [[datastore.states allKeys] objectAtIndex:(NSUInteger)arc4random() % count];
-	State *aState = [State stateWithName:randomStateName inContext:context];
-	City *aCity = nil;
-	// Select the next city
-	NSSet *cityNames = [aState valueForKeyPath:@"cities.name"];
-	NSArray *citiesData = [[datastore.states objectForKey:aState.name] objectForKey:@"StateCities"];
-	for(NSDictionary *cityData in citiesData) {
-		if( ![cityNames containsObject:[cityData objectForKey:@"CityName"]] ) {
-			// We don't have this city, so add it
-			aCity = [City cityWithName:[cityData objectForKey:@"CityName"] population:[cityData objectForKey:@"CityPopulation"] inContext:context];
-			[aState addCitiesObject:aCity];
-			aCity.state = aState;
-			break;
-		}
-	}	
+	// Get random city data
+	NSDictionary *randomCity = [datastore randomCity];
+		
+	while ([City cityExistsWithName:[randomCity objectForKey:@"CityName"] inContext:context]) {
+		randomCity = [datastore randomCity];
+	}
 	
-	NSLog(@"Inserting %@ (%@)", aCity.name, aState.name);
+	State *aState = [State stateWithName:[randomCity objectForKey:@"StateName"] inContext:context];
+	City *aCity = [City cityWithName:[randomCity objectForKey:@"CityName"] population:[randomCity objectForKey:@"CityPopulation"] inContext:context];
+	if ([randomCity objectForKey:@"isCapital"]) {
+		aCity.isCapitalValue = [[randomCity objectForKey:@"isCapital"] boolValue];
+	}
+	[aState addCitiesObject:aCity];
+	aCity.state = aState;
+		
+	NSLog(@"Inserting %@%@ (%@)", aCity.name, aCity.isCapitalValue ? @"*" : @"", aState.name);
 	
     // Save the context.
     NSError *error = nil;
@@ -133,6 +141,9 @@
          */
         abort();
     }
+	
+	// Animate the table to the correct row
+	[self.tableView scrollToRowAtIndexPath:[self.fetchedResultsController indexPathForObject:aCity] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
 }
 
 
@@ -170,7 +181,7 @@
     
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
     if (cell == nil) {
-        cell = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier] autorelease];
+        cell = [[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:CellIdentifier] autorelease];
     }
     
     // Configure the cell.
@@ -255,7 +266,7 @@
 	    
     // Edit the section name key path and cache name if appropriate.
     // nil for section name key path means "no sections".
-    BSFetchedResultsController *aFetchedResultsController = [[BSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:self.managedObjectContext sectionNameKeyPath:@"state.name" cacheName:@"USStatesAndCities"];
+    BSFetchedResultsController *aFetchedResultsController = [[BSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:self.managedObjectContext sectionNameKeyPath:@"state.name" cacheName:nil];
     aFetchedResultsController.delegate = self;
     self.fetchedResultsController = aFetchedResultsController;
     
@@ -264,23 +275,25 @@
     [sortDescriptor release];
     [sortDescriptors release];
 	
-/*	
-	// Add a post fetch filter predicate
-		fetchedResultsController.postFetchFilterPredicate = [NSPredicate predicateWithFormat:@"(type == 0) OR (type == 2) OR (type == 4) OR (type == 6) OR (type == 8)"];
 	
 	// Add a post fetch sort comparator
-	fetchedResultsController.postFetchComparator = ^(id eventA, id eventB) {
-		if(((Event *)eventA).randomEntity && !((Event *)eventB).randomEntity) {
+	fetchedResultsController.postFetchComparator = ^(id a, id b) {
+		// if the city is a capital, it always comes before non-capitals
+		if (((City *)a).isCapitalValue && !((City *)b).isCapitalValue) {
 			return NSOrderedAscending;
-		} else if (!((Event *)eventA).randomEntity && ((Event *)eventB).randomEntity) {
+		} else if (!((City *)a).isCapitalValue && ((City *)b).isCapitalValue) {
 			return NSOrderedDescending;
-		} else if (((Event *)eventA).randomEntity && ((Event *)eventB).randomEntity) {
-			return [((RandomEntityType *)((Event *)eventA).randomEntity).someProperty compare:((RandomEntityType *)((Event *)eventB).randomEntity).someProperty];
 		} else {
-			return NSOrderedSame;
-		}
+			if ([((City *)a).population integerValue] > [((City *)b).population integerValue]) {
+				return NSOrderedAscending;
+			} else if ([((City *)a).population integerValue] < [((City *)b).population integerValue]) {
+				return NSOrderedDescending;
+			} else {
+				return [((City *)a).name caseInsensitiveCompare:((City *)b).name];				
+			}
+		}	
 	};	
-*/
+
 	
     NSError *error = nil;
     if (![fetchedResultsController performFetch:&error]) {

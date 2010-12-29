@@ -17,6 +17,9 @@
 	
 	// BSFetchedResultsController stuff
 	BSFetchedResultsController *fetchedResultsController;
+	
+	// Number formatter
+	NSNumberFormatter *formatter;
 
 }
 
