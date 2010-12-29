@@ -2,11 +2,219 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>Georgia</key>
+	<dict>
+		<key>StateCities</key>
+		<array>
+			<dict>
+				<key>isCapital</key>
+				<true/>
+				<key>CityName</key>
+				<string>Atlanta</string>
+				<key>CityPopulation</key>
+				<integer>540922</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Augusta</string>
+				<key>CityPopulation</key>
+				<integer>194343</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Columbus</string>
+				<key>CityPopulation</key>
+				<integer>190414</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Savannah</string>
+				<key>CityPopulation</key>
+				<integer>134669</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Athens</string>
+				<key>CityPopulation</key>
+				<integer>114983</integer>
+			</dict>
+		</array>
+		<key>StateName</key>
+		<string>Georgia</string>
+	</dict>
+	<key>Florida</key>
+	<dict>
+		<key>StateCities</key>
+		<array>
+			<dict>
+				<key>isCapital</key>
+				<true/>
+				<key>CityName</key>
+				<string>Tallahassee</string>
+				<key>CityPopulation</key>
+				<integer>172574</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Jacksonville</string>
+				<key>CityPopulation</key>
+				<integer>813518</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Miami</string>
+				<key>CityPopulation</key>
+				<integer>433136</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Tampa</string>
+				<key>CityPopulation</key>
+				<integer>343890</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>St. Petersburg</string>
+				<key>CityPopulation</key>
+				<integer>248098</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Orlando</string>
+				<key>CityPopulation</key>
+				<integer>235860</integer>
+			</dict>
+		</array>
+		<key>StateName</key>
+		<string>Florida</string>
+	</dict>
+	<key>Delaware</key>
+	<dict>
+		<key>StateCities</key>
+		<array>
+			<dict>
+				<key>isCapital</key>
+				<true/>
+				<key>CityName</key>
+				<string>Dover</string>
+				<key>CityPopulation</key>
+				<integer>35811</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Wilmington</string>
+				<key>CityPopulation</key>
+				<integer>73069</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Newark</string>
+				<key>CityPopulation</key>
+				<integer>28547</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Pike Creek</string>
+				<key>CityPopulation</key>
+				<integer>19751</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Bear</string>
+				<key>CityPopulation</key>
+				<integer>17593</integer>
+			</dict>
+		</array>
+		<key>StateName</key>
+		<string>Delaware</string>
+	</dict>
+	<key>Connecticut</key>
+	<dict>
+		<key>StateCities</key>
+		<array>
+			<dict>
+				<key>isCapital</key>
+				<true/>
+				<key>CityName</key>
+				<string>Hartford</string>
+				<key>CityPopulation</key>
+				<integer>124512</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Bridgeport</string>
+				<key>CityPopulation</key>
+				<integer>137912</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>New Haven</string>
+				<key>CityPopulation</key>
+				<integer>123330</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Stamford</string>
+				<key>CityPopulation</key>
+				<integer>118475</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Waterbury</string>
+				<key>CityPopulation</key>
+				<integer>108000</integer>
+			</dict>
+		</array>
+		<key>StateName</key>
+		<string>Connecticut</string>
+	</dict>
+	<key>Colorado</key>
+	<dict>
+		<key>StateCities</key>
+		<array>
+			<dict>
+				<key>isCapital</key>
+				<true/>
+				<key>CityName</key>
+				<string>Denver</string>
+				<key>CityPopulation</key>
+				<integer>610345</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Colorado Springs</string>
+				<key>CityPopulation</key>
+				<integer>414658</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Aurora</string>
+				<key>CityPopulation</key>
+				<integer>324655</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Lakewood</string>
+				<key>CityPopulation</key>
+				<integer>141943</integer>
+			</dict>
+			<dict>
+				<key>CityName</key>
+				<string>Fort Collins</string>
+				<key>CityPopulation</key>
+				<integer>138736</integer>
+			</dict>
+		</array>
+		<key>StateName</key>
+		<string>Colorado</string>
+	</dict>
 	<key>California</key>
 	<dict>
 		<key>StateCities</key>
 		<array>
 			<dict>
+				<key>isCapital</key>
+				<true/>
 				<key>CityName</key>
 				<string>Sacramento</string>
 				<key>CityPopulation</key>
@@ -75,6 +283,8 @@
 				<integer>80268</integer>
 			</dict>
 			<dict>
+				<key>isCapital</key>
+				<true/>
 				<key>CityName</key>
 				<string>Little Rock</string>
 				<key>CityPopulation</key>
@@ -113,6 +323,8 @@
 				<integer>541811</integer>
 			</dict>
 			<dict>
+				<key>isCapital</key>
+				<true/>
 				<key>CityName</key>
 				<string>Phoenix</string>
 				<key>CityPopulation</key>
@@ -139,6 +351,8 @@
 				<integer>13428</integer>
 			</dict>
 			<dict>
+				<key>isCapital</key>
+				<true/>
 				<key>CityName</key>
 				<string>Juneau</string>
 				<key>CityPopulation</key>
@@ -183,6 +397,8 @@
 				<integer>198915</integer>
 			</dict>
 			<dict>
+				<key>isCapital</key>
+				<true/>
 				<key>CityName</key>
 				<string>Montgomery</string>
 				<key>CityPopulation</key>
