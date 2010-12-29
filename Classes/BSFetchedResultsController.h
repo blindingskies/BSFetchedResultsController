@@ -56,6 +56,8 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 // Define a protocol for delegate methods
 @protocol BSFetchedResultsControllerDelegate;
 
+@class BSFetchedResultsControllerSectionInfoCache;
+
 NS_CLASS_AVAILABLE(NA, 3_0)
 @interface BSFetchedResultsController : NSObject {
 @private
@@ -64,13 +66,15 @@ NS_CLASS_AVAILABLE(NA, 3_0)
 	NSManagedObjectContext *_managedObjectContext;
 	NSString *_sectionNameKeyPath;
 	NSString *_sectionNameKey;
-	NSString *_cacheName;	
-	id _cache;
+	NSString *_cacheName;
+	BSFetchedResultsControllerSectionInfoCache *_persistentCache;
+	
 	id _delegate;	
 	id _fetchedObjects;
-	id _sections;
-	id _sortedSectionNames;
-	id _sectionsByName;
+	NSMutableArray *_sortedSectionNames;
+	NSMutableDictionary *_sectionsByName;
+	NSMutableDictionary *_sectionNamesByObject;
+	
 	id _sectionIndexTitles;
 	id _sectionIndexTitlesSections;	
 

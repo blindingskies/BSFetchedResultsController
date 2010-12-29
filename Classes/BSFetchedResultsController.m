@@ -69,8 +69,12 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSString *_name;
 	NSString *_indexTitle;
 	NSUInteger _numberOfObjects;
-	NSArray *_objects;
+	NSMutableArray *_objects;
 }
+
+// Adds an object to the array of objects
+- (void)addObject:(id)obj;
+- (void)removeObject:(id)obj;
 
 // The key
 @property (nonatomic, retain) NSString *key;
@@ -150,13 +154,32 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 - (void)setObjects:(NSArray *)someObjects {
 	[self willChangeValueForKey:@"objects"];	
 	[_objects release];
-	_objects = [someObjects retain];
+	_objects = [[NSMutableArray alloc] initWithArray:someObjects];
 	[self didChangeValueForKey:@"objects"];	
 	[self willChangeValueForKey:@"numberOfObjects"];	
 	_numberOfObjects = [_objects count];
 	[self didChangeValueForKey:@"numberOfObjects"];
 }
 
+- (void)addObject:(id)obj {
+	[self willChangeValueForKey:@"objects"];	
+	// Add the object
+	[_objects addObject:obj];
+	[self didChangeValueForKey:@"objects"];	
+	[self willChangeValueForKey:@"numberOfObjects"];	
+	_numberOfObjects = [_objects count];
+	[self didChangeValueForKey:@"numberOfObjects"];	
+}
+
+- (void)removeObject:(id)obj {
+	[self willChangeValueForKey:@"objects"];	
+	// Remove the object
+	[_objects removeObject:obj];
+	[self didChangeValueForKey:@"objects"];	
+	[self willChangeValueForKey:@"numberOfObjects"];	
+	_numberOfObjects = [_objects count];
+	[self didChangeValueForKey:@"numberOfObjects"];		
+}
 
 @end
 
@@ -173,8 +196,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSString *sectionNameKeyPath;
 	NSArray *sections;
 	NSPredicate *postFetchFilterPredicate;
-	BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
-	NSComparator postFetchComparator;
 	
 }
 
@@ -184,8 +205,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 @property (nonatomic, readwrite, retain) NSString *sectionNameKeyPath;
 @property (nonatomic, readwrite, retain) NSArray *sections;
 @property (nonatomic, readwrite, retain) NSPredicate *postFetchFilterPredicate;
-@property (nonatomic, readwrite, retain) BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
-@property (nonatomic, readwrite, retain) NSComparator postFetchComparator;
 
 - (void)spawnObjectsFromContext:(NSManagedObjectContext *)context;
 
@@ -199,8 +218,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 @synthesize sectionNameKeyPath;
 @synthesize sections;
 @synthesize postFetchFilterPredicate;
-@synthesize postFetchFilterTest;
-@synthesize postFetchComparator;
 
 - (void)dealloc {
 	self.entity = nil; [entity release];
@@ -209,8 +226,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	self.sectionNameKeyPath = nil; [sectionNameKeyPath release];	
 	self.sections = nil; [sections release];
 	self.postFetchFilterPredicate = nil; [postFetchFilterPredicate release];
-	self.postFetchFilterTest = nil; [postFetchFilterTest release];
-	self.postFetchComparator = nil; [postFetchComparator release];	
 	[super dealloc];
 }
 
@@ -223,8 +238,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		self.sortDescriptors = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey];
 		self.sectionNameKeyPath = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionNameKeyPathKey];
 		self.postFetchFilterPredicate = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchPredicateKey];
-		self.postFetchFilterTest = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchFilterKey];
-		self.postFetchComparator = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchComparatorKey];
 		self.sections = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionsKey];
 	}
 	return self;
@@ -237,8 +250,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	[aCoder encodeObject:sortDescriptors forKey:kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey];
 	[aCoder encodeObject:sectionNameKeyPath forKey:kBSFRCSectionInfoCacheSectionNameKeyPathKey];
 	[aCoder encodeObject:postFetchFilterPredicate forKey:kBSFRCSectionInfoCachePostFetchPredicateKey];
-	[aCoder encodeObject:postFetchFilterTest forKey:kBSFRCSectionInfoCachePostFetchFilterKey];
-	[aCoder encodeObject:postFetchComparator forKey:kBSFRCSectionInfoCachePostFetchComparatorKey];
 	[aCoder encodeObject:sections forKey:kBSFRCSectionInfoCacheSectionsKey];
 }
 
@@ -280,19 +291,19 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 // Validates the contents of the cache (given by the cache name)
 // against the properties used to instantiate the controller.
-- (BOOL)validateCache;
+- (BOOL)readCache;
 
 // Write everything to the cache
-- (void)flushCache;
+- (void)writeCache;
 
 // NSManagedObjectContext Notification Handlers
 - (void)registerNotificationHandlers;
 - (void)removeNotificationHandlers;
 
 // Perform automatic sectioning
-- (NSMutableArray *)addFetchedObjects:(NSArray *)objs;
-- (NSDictionary *)removeFetchedObjects:(NSArray *)objs;
-- (NSDictionary *)updateFetchedObjects:(NSArray *)objs;
+- (NSMutableArray *)insertObjects:(NSArray *)objs;
+- (NSDictionary *)removeObjects:(NSArray *)objs;
+- (NSDictionary *)updateObjects:(NSArray *)objs;
 
 @end
 
@@ -306,7 +317,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 @synthesize cacheName=_cacheName;
 @synthesize fetchedObjects=_fetchedObjects;
 @synthesize sectionNameKeyPath=_sectionNameKeyPath;
-@synthesize sections=_sections;
+@dynamic sections;
 @synthesize sectionIndexTitles=_sectionIndexTitles;
 
 @synthesize postFetchFilterPredicate;
@@ -331,9 +342,10 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 			_sectionNameKeyPath = [aSectionNameKeyPath copy];
 		}
 		_cacheName = [aName copy];
-		_sections = nil;		
-		_sectionsByName = nil;
-		_fetchedObjects = nil;
+		
+		_sortedSectionNames = [[NSMutableArray alloc] init];
+		_sectionsByName = [[NSMutableDictionary alloc] init];
+		_sectionNamesByObject = [[NSMutableDictionary alloc] init];
 		
 		// Dispatch queue used for queuing DidChange notifications
 		didChangeQueue = dispatch_queue_create("com.blindingskies.bsfrc", NULL);	
@@ -352,6 +364,10 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	[_managedObjectContext release];
 	[_fetchRequest release];
 	[_fetchedObjects release];
+	[_cacheName release];
+	[_sortedSectionNames release];
+	[_sectionsByName release];
+	[_sectionNamesByObject release];
 	self.postFetchFilterPredicate = nil; [postFetchFilterPredicate release];
 	self.postFetchFilterTest = nil; [postFetchFilterTest release];
 	self.postFetchComparator = nil; [postFetchComparator release];
@@ -363,40 +379,53 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 - (BOOL)performFetch:(NSError **)error {
 	
+	
 	// If we have a cache name, check to see if we have a cache
 	// and that it's valid
-	if(_cacheName && [self validateCache]) {
+	if(_cacheName && [self readCache]) {
 		NSLog(@"Successfully validated cache");
 		
 		// Copy objects over from the cache
-		_sections = [[NSArray alloc] initWithArray:[_cache sections]];
-		NSMutableArray *allObjects = [NSMutableArray array];
-		NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithCapacity:[_sections count]];
-		for(BSFetchedResultsControllerSection *section in _sections) {
-			[dic setObject:[NSMutableArray arrayWithArray:[section objects]] forKey:section.key];
-			// Add all the objects
-			[allObjects addObjectsFromArray:[section objects]];
+		for(BSFetchedResultsControllerSection *section in [_persistentCache sections]) {
+			
+			// Resort the objects within the section
+			NSMutableArray *objs = [NSMutableArray arrayWithArray:section.objects];
+			[objs sortUsingDescriptors:[_fetchRequest sortDescriptors]];
+			if(self.postFetchComparator) {
+				[objs sortUsingComparator:self.postFetchComparator];
+			}
+			[section setObjects:objs];
+						
+			// Set the section
+			[_sectionsByName setObject:section forKey:section.key];
+			
 		}
-
-		// Update the sortedSectionNames
+		// Update the various properties
 		[_sortedSectionNames release];
-		_sortedSectionNames = [[NSArray alloc] initWithArray:[[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];	
+		_sortedSectionNames = [[NSArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
+		
+		// Update other ordered things
+		NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
+		NSMutableArray *allObjects = [[NSMutableArray alloc] init];
+		for(NSString *key in _sortedSectionNames) {
+			[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+			[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
+		}
 		
 		// Update the sectionIndexTitles
 		[_sectionIndexTitles release];
-		_sectionIndexTitles = [[NSArray alloc] initWithArray:[_sections valueForKeyPath:@"indexTitle"]];
-		
-		// Update the _sectionsByName dictionary
-		[_sectionsByName release];
-		_sectionsByName = [[NSDictionary alloc] initWithDictionary:dic];	
+		_sectionIndexTitles = [[NSArray alloc] initWithArray:indexTitles];
 		
 		// Update the fetchedResults array
 		[_fetchedObjects release];
 		_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];
 		
+		[indexTitles release];
+		[allObjects release];
+		
 		return YES;
 	}
-	
+
 	// Perform the fetch
 	NSError *anError = nil;
 	NSArray *results = [_managedObjectContext executeFetchRequest:_fetchRequest error:&anError];	
@@ -424,13 +453,13 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		}
 		
 		// Perform sectioning
-		[self addFetchedObjects:results];
+		[self insertObjects:results];
 								
 	}
 	
 	// If we've got a cache name, write to it
 	if(_cacheName) {
-		[self flushCache];
+		[self writeCache];
 	}
 		
 	return YES;
@@ -438,7 +467,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath {
-	BSFetchedResultsControllerSection *section = [(NSArray *)_sections objectAtIndex:indexPath.section];
+	BSFetchedResultsControllerSection *section = [_sectionsByName objectForKey:[_sortedSectionNames objectAtIndex:indexPath.section]];
 	return [[section objects] objectAtIndex:indexPath.row];
 }
 
@@ -451,21 +480,22 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		key = kBSFetchedResultsControllerDefaultSectionName;
 	}
 
+	BSFetchedResultsControllerSection *section = nil;
 	NSUInteger sectionIndex, rowIndex = 0;
 	NSArray *objs = nil;
 	if (key) {
 		// The section objects
-		objs = [(NSDictionary *)_sectionsByName objectForKey:key];		
+		section = [_sectionsByName objectForKey:key];
 		// The section index
 		sectionIndex = [_sortedSectionNames indexOfObject:key];
 		// The row index
-		rowIndex = [objs indexOfObject:object];
+		rowIndex = [section.objects indexOfObject:object];
 	} else {
-
-		NSUInteger numberOfSections = [_sections count];
+			
+		NSUInteger numberOfSections = [_sectionsByName count];
 		for (sectionIndex=0; sectionIndex<numberOfSections; sectionIndex++) {
 			// Get the array of objects in the section
-			objs = [(BSFetchedResultsControllerSection *)[(NSArray *)_sections objectAtIndex:sectionIndex] objects];
+			objs = [(BSFetchedResultsControllerSection *)[_sectionsByName objectForKey:[_sortedSectionNames objectAtIndex:sectionIndex]] objects];
 			
 			// Enumerate over the array using a block to find indexes passing a test
 			NSIndexSet *indexes = [objs indexesOfObjectsPassingTest:^(id anObj, NSUInteger idx, BOOL *stop) {
@@ -478,8 +508,8 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 				rowIndex = [indexes firstIndex];
 				break;
 			}
-		}		
-	}
+		} // End of for		
+	} // End of key check
 	
 	// Therefore the index path is the index of the section name, and then the index of the object
 	NSIndexPath *indexPath = [NSIndexPath indexPathForRow:rowIndex inSection:sectionIndex];	
@@ -489,62 +519,63 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 - (NSString *)sectionIndexTitleForSectionName:(NSString *)sectionName {
 	return [[sectionName capitalizedString] substringToIndex:1];
 }
-									
+
+#pragma mark -
+#pragma mark Dynamic Methods
+
+- (NSArray *)sections {
+	return [[_sectionsByName allValues] sortedArrayUsingComparator:^(id a, id b) {
+		return [((BSFetchedResultsControllerSection *)a).key caseInsensitiveCompare:((BSFetchedResultsControllerSection *)b).key];
+	}];
+}
+
 									
 #pragma mark -
 #pragma mark Private Methods
 
 // Validates the contents of the cache (given by the cache name)
 // against the properties used to instantiate the controller.
-- (BOOL)validateCache {
+- (BOOL)readCache {
 	
 	// Return false if we haven't got a cache name
 	if(!_cacheName) return NO;
+	
+	NSLog(@"Reading cache");
 	
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
 	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
 
 	// First of all we need to decode the cache
-	_cache = (BSFetchedResultsControllerSectionInfoCache *)[NSKeyedUnarchiver unarchiveObjectWithFile:path];
+	_persistentCache = (BSFetchedResultsControllerSectionInfoCache *)[NSKeyedUnarchiver unarchiveObjectWithFile:path];
 
 	// Now we need to check to see if the various properties are the same
-	if( ![[[_fetchRequest entity] name] isEqual:[((BSFetchedResultsControllerSectionInfoCache *)_cache).entity name]]) {
+	if( ![[[_fetchRequest entity] name] isEqual:[((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).entity name]]) {
 		NSLog(@"Cache difference: fetch request's entity");
 		return NO;
 	}
 
-	if ((((BSFetchedResultsControllerSectionInfoCache *)_cache).fetchPredicate && [_fetchRequest predicate]) &&
-		![[_fetchRequest predicate] isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).fetchPredicate]) {
+	if ((((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).fetchPredicate && [_fetchRequest predicate]) &&
+		![[_fetchRequest predicate] isEqual:((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).fetchPredicate]) {
 		NSLog(@"Cache difference: fetch request's predicate");
 		return NO;
 	}
 
-	if ((((BSFetchedResultsControllerSectionInfoCache *)_cache).sortDescriptors && [_fetchRequest sortDescriptors]) &&
-		![[_fetchRequest sortDescriptors] isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).sortDescriptors]) {
+	if ((((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sortDescriptors && [_fetchRequest sortDescriptors]) &&
+		![[_fetchRequest sortDescriptors] isEqual:((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sortDescriptors]) {
 		NSLog(@"Cache difference: fetch request's sort descriptors");
 		return NO;
 	}	
 	
-	if( _sectionNameKeyPath && ![_sectionNameKeyPath isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).sectionNameKeyPath]) {
+	if( _sectionNameKeyPath && ![_sectionNameKeyPath isEqual:((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sectionNameKeyPath]) {
 		NSLog(@"Cache difference: section name key path");
 		return NO;
 	}
 	
-	if( postFetchFilterPredicate && ![postFetchFilterPredicate isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterPredicate]) {
+	if( postFetchFilterPredicate && ![postFetchFilterPredicate isEqual:((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).postFetchFilterPredicate]) {
 		NSLog(@"Cache difference: post fetch filter predicate");
 		return NO;
 	}
-
-	if( postFetchFilterTest && ![postFetchFilterTest isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterTest]) {
-		NSLog(@"Cache difference: post fetch filter test");
-		return NO;
-	}
-
-	if( postFetchComparator && ![postFetchComparator isEqual:((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchComparator]) {
-		NSLog(@"Cache difference: post fetch comparator");
-		return NO;
-	}	
 	
 	NSLog(@"Cache seems to be the same");
 	
@@ -552,17 +583,19 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	// so, assuming that the cache has kept up to date we can start using it again.
 	
 	// First we need to turn our objectIDs into proper NSManagedObject instances
-	[(BSFetchedResultsControllerSectionInfoCache *)_cache spawnObjectsFromContext:self.managedObjectContext];	
+	[(BSFetchedResultsControllerSectionInfoCache *)_persistentCache spawnObjectsFromContext:self.managedObjectContext];	
 	
 	return YES;
 }
 
 
 // Write everything to the cache
-- (void)flushCache {
+- (void)writeCache {
 
 	// Return if we haven't got a cache name
 	if(!_cacheName) return;
+	
+	NSLog(@"Writing cache");	
 	
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
@@ -589,19 +622,17 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	
 	
 	// Create a SectionInfoCache object
-	_cache = (BSFetchedResultsControllerSectionInfoCache *)[[BSFetchedResultsControllerSectionInfoCache alloc] init];
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).entity = [_fetchRequest entity];
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).fetchPredicate = [_fetchRequest predicate];
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).sortDescriptors = [_fetchRequest sortDescriptors];
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).sectionNameKeyPath = _sectionNameKeyPath;
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).sections = _sections;
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterPredicate = postFetchFilterPredicate;
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchFilterTest = postFetchFilterTest;
-	((BSFetchedResultsControllerSectionInfoCache *)_cache).postFetchComparator = postFetchComparator;	
+	_persistentCache = (BSFetchedResultsControllerSectionInfoCache *)[[BSFetchedResultsControllerSectionInfoCache alloc] init];
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).entity = [_fetchRequest entity];
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).fetchPredicate = [_fetchRequest predicate];
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sortDescriptors = [_fetchRequest sortDescriptors];
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sectionNameKeyPath = _sectionNameKeyPath;
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sections = self.sections;
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).postFetchFilterPredicate = postFetchFilterPredicate;
 	
 	// Encode the cache
 	
-	if( ![NSKeyedArchiver archiveRootObject:_cache toFile:path] ) {
+	if( ![NSKeyedArchiver archiveRootObject:_persistentCache toFile:path] ) {
 		NSLog(@"Archive failed...");
 	}
 	
@@ -611,12 +642,12 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 // Add notification handlers to NSNotificationCenter
 - (void)registerNotificationHandlers {
-			
+	
 	// Various block definitions that we add to the queue for each notification
 	void (^insertHandler)(NSSet *insertedObjects) = ^(NSSet *insertedObjects) {
 		
 		// Update the sectioned objects
-		NSMutableArray *addedSections = [self addFetchedObjects:[insertedObjects allObjects]];
+		NSMutableArray *addedSections = [self insertObjects:[insertedObjects allObjects]];
 		
 		if([self.delegate respondsToSelector:@selector(controller:didChangeObject:atIndexPath:forChangeType:newIndexPath:)]) {
 			
@@ -627,7 +658,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 				NSIndexPath *indexPath = [self indexPathForObject:obj];
 				
 				// Get the sectional object for this object
-				BSFetchedResultsControllerSection *aSection = [(NSArray *)_sections objectAtIndex:indexPath.section];
+				BSFetchedResultsControllerSection *aSection = [_sectionsByName objectForKey:[_sortedSectionNames objectAtIndex:indexPath.section]];
 				
 				// Check to see if this obj resulted in an added section
 				if ([addedSections containsObject:aSection]) {
@@ -670,7 +701,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		}				
 		
 		// Remove the deleted objects
-		NSDictionary *removedSections = [self removeFetchedObjects:[removedObjects allObjects]];				
+		NSDictionary *removedSections = [self removeObjects:[removedObjects allObjects]];				
 		
 		for(BSFetchedResultsControllerSection *aSection in [removedSections allValues]) {
 			
@@ -690,16 +721,16 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	void (^updatedHandler)(NSSet *updatedObjects) = ^(NSSet *updatedObjects) {
 		
 		// Update the sectional information
-		NSDictionary *changes = [self updateFetchedObjects:[updatedObjects allObjects]];				
+		NSDictionary *changes = [self updateObjects:[updatedObjects allObjects]];				
 		
 		// Perform sectional insertions
-		NSMutableArray *addedSections = [changes objectForKey:@"addedSections"];
+		NSMutableArray *addedSections = [changes objectForKey:@"insertedSections"];
 		for(BSFetchedResultsControllerSection *aSection in addedSections) {
 			
 			// We need to tell the delegate to insert a section
 			[self.delegate controller:self 
 					 didChangeSection:aSection 
-							  atIndex:[_sections indexOfObject:aSection] 
+							  atIndex:[_sortedSectionNames indexOfObject:aSection.key] 
 						forChangeType:NSFetchedResultsChangeInsert];					
 		}
 		
@@ -863,11 +894,11 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		}
 				
 	}];
-	
-	// Register to save the cache on did save
+
 	didSaveNotificationHandler = [nc addObserverForName:NSManagedObjectContextDidSaveNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
-		// Update the cache
-		[self flushCache];
+		
+		// Write the cache
+		[self writeCache];
 	}];
 	
 }
@@ -883,16 +914,16 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	}
 }
 
-- (NSMutableArray *)addFetchedObjects:(NSArray *)objs {
+- (NSMutableArray *)insertObjects:(NSArray *)objs {
 
 	// This will update the BSFetchedResultsController members with the objects
 	// This function is called during a performFetch, to initally setup the
 	// fetched objects. It is also called during the DidChangeNotification
 	// handler to perform updates.
 	
-	// First of all section the objects
-	
-	NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithDictionary:_sectionsByName];
+	// We maintain a dictionary of inserted objects
+	NSMutableDictionary *insertedObjects = [NSMutableDictionary dictionary];
+	NSMutableArray *insertedSections = [NSMutableArray array];	
 	
 	// Enumerate the objects and put them into the dictionary sections
 	[objs enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
@@ -905,92 +936,118 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 			key = kBSFetchedResultsControllerDefaultSectionName;
 		}
 
-		// Get the mutable array of objects for this section
-		NSMutableArray *sectionObjs = [dic objectForKey:key];		
-		
-		// Create this array if it doesn't exist yet
-		if(!sectionObjs) {
-			sectionObjs = [NSMutableArray array];
-			[dic setObject:sectionObjs forKey:key];
+		// Get the section object for this key
+		BSFetchedResultsControllerSection *section = [_sectionsByName objectForKey:key];
+		if(!section) {
+			// Create a Section object
+			section = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
+			if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+				section.key = key;
+				[section setName:[key capitalizedString]];
+				[section setIndexTitle:[self sectionIndexTitleForSectionName:section.name]];			
+			}
+			// Add the object
+			[section setObjects:[NSArray arrayWithObject:obj]];
+			
+			// Add the section to the array of inserted sections
+			[insertedSections addObject:section];
+			
+			// Add the section to the dictionary
+			[_sectionsByName setObject:section forKey:key];
+			
+		} else {
+			// Add the object
+			[section addObject:obj];
 		}
-		
-		// Add the object to the section's array
-		[sectionObjs addObject:obj];
-		
+
 	}];
-		
-	// We need to sort the sections
-	NSArray *updatedSectionNames = [[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
 	
-	// We can now create our section info objects
-	NSMutableArray *theSections = [NSMutableArray array];
-	NSMutableArray *allObjects = [NSMutableArray array];
-	NSMutableArray *addedSections = [NSMutableArray array];
 	
-	for(NSString *key in updatedSectionNames) {
-				
-		// Resort the objects within the section		
-		NSMutableArray *sortedObjs = [dic objectForKey:key];
-		[sortedObjs sortUsingDescriptors:[_fetchRequest sortDescriptors]];
-		if(self.postFetchComparator) {
-			[sortedObjs sortUsingComparator:self.postFetchComparator];
-		}		
-		[dic setObject:sortedObjs forKey:key];
-				
-		// Create a Section object
-		BSFetchedResultsControllerSection *aSection = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
-		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
-			aSection.key = key;
-			[aSection setName:[key capitalizedString]];
-			[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];			
-		}
-		[aSection setObjects:sortedObjs];
-		[theSections addObject:aSection];
-		
-		// See if this is a new section
-		if (![_sortedSectionNames containsObject:key]) {
-			[addedSections addObject:aSection];
-		}		
-		
-		// Add all the objects
-		[allObjects addObjectsFromArray:sortedObjs];
+	// Now that we've gone through and inserted all the objects, we can go through again and resort
+	// We do this in two passes so that we all all the objects then do one sort, otherwise we'd do
+	// unnecessary sorting
+
+	if([_fetchRequest sortDescriptors] || self.postFetchComparator) {
+
+		// Enumerate the objects and put them into the dictionary sections
+		[objs enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
+			
+			// If there isn't a section key path, use the default key
+			NSString *key = nil;		
+			if(_sectionNameKeyPath) {
+				key = [obj valueForKeyPath:_sectionNameKeyPath];
+			} else {
+				key = kBSFetchedResultsControllerDefaultSectionName;
+			}
+			
+			// Get the section object for this key
+			BSFetchedResultsControllerSection *section = [_sectionsByName objectForKey:key];
+			
+			// Get the objects
+			NSMutableArray *objects = [NSMutableArray arrayWithArray:section.objects];
+			
+			// Resort
+			if([_fetchRequest sortDescriptors]) {
+				[objects sortUsingDescriptors:[_fetchRequest sortDescriptors]];
+			}
+			if(self.postFetchComparator) {
+				[objects sortUsingComparator:self.postFetchComparator];
+			}
+			
+			// Set the objects back
+			[section setObjects:objects];			
+			
+			// Get the index path of the objects
+			NSIndexPath *indexPath = [self indexPathForObject:obj];
+			
+			// Add to the inserted objects dictionary
+			[insertedObjects setObject:obj forKey:indexPath];
+			
+		}];
 	}
 	
-	// Update the sortedSectionNames
+	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];	
+	_sortedSectionNames = [[NSArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
 	
-	// Update the section objects
-	[_sections release];
-	_sections = [[NSArray alloc] initWithArray:theSections];
+	// Update other ordered things
+	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
+	NSMutableArray *allObjects = [[NSMutableArray alloc] init];
+	for(NSString *key in _sortedSectionNames) {
+		[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
+	}
 	
 	// Update the sectionIndexTitles
 	[_sectionIndexTitles release];
-	_sectionIndexTitles = [[NSArray alloc] initWithArray:[_sections valueForKeyPath:@"indexTitle"]];
-	
-	// Update the _sectionsByName dictionary
-	[_sectionsByName release];
-	_sectionsByName = [[NSDictionary alloc] initWithDictionary:dic];	
-	
+	_sectionIndexTitles = [[NSArray alloc] initWithArray:indexTitles];
+		
 	// Update the fetchedResults array
 	[_fetchedObjects release];
 	_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];
 	
-	return addedSections;
+	[indexTitles release];
+	[allObjects release];
+	
+	return insertedSections;
 }
 
 
-- (NSDictionary *)removeFetchedObjects:(NSArray *)objs {
+- (NSDictionary *)removeObjects:(NSArray *)objs {
 	
-	// Get a mutable dictionary of the sections
-	NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithDictionary:(NSDictionary *)_sectionsByName];
+	// Here we remove objects from the results store
+	// and we look out for any situation where this removed a section
 	
-	// Iterate through the array of objs
-	for (id obj in objs) {
+	// We maintain a dictionary of removed objects
+	NSMutableDictionary *removedSections = [NSMutableDictionary dictionary];	
+	
+	// Enumerate the objects we're going to remove
+	for(id obj in objs) {
 		
-		// Get the key
-		// If there isn't a section key path, use the default key
-		NSString *key = nil;		
+		// Work out the key. It's likely that it wont exist anymore on
+		// the object, because 
+		
+		NSString *key = nil;
 		if(_sectionNameKeyPath) {
 			key = [obj valueForKeyPath:_sectionNameKeyPath];
 		} else {
@@ -998,135 +1055,101 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		}
 		
 		NSUInteger sectionIndex;
-		NSMutableArray *sectionObjects = nil;
-
+		BSFetchedResultsControllerSection *section = nil;
+		
 		if (key) {
+
+			// The section
+			section = [_sectionsByName objectForKey:key];			
 			
-			// The section objects
-			sectionObjects = [dic objectForKey:key];		
 			// The section index
 			sectionIndex = [_sortedSectionNames indexOfObject:key];
 			
 		} else {
 			
-			NSUInteger numberOfSections = [_sections count];
+			NSUInteger numberOfSections = [_sectionsByName count];
 			for (sectionIndex=0; sectionIndex<numberOfSections; sectionIndex++) {
 				
 				// Get the array of objects in the section
-				BSFetchedResultsControllerSection *aSection = [(NSArray *)_sections objectAtIndex:sectionIndex];
-				sectionObjects = [NSMutableArray arrayWithArray:aSection.objects];
+				section = [_sectionsByName objectForKey:[_sortedSectionNames objectAtIndex:sectionIndex]];
 				
 				// Enumerate over the array using a block to find indexes passing a test
-				NSIndexSet *indexes = [sectionObjects indexesOfObjectsPassingTest:^(id anObj, NSUInteger idx, BOOL *stop) {
+				NSIndexSet *indexes = [section.objects indexesOfObjectsPassingTest:^(id anObj, NSUInteger idx, BOOL *stop) {
 					// Here we can check to see if the object id of anObj matches obj and if so return 
 					return [[obj objectID] isEqual:[anObj objectID]];
 				}];
 				
 				// Now we need to check to see if we have a value in the index set
 				if ([indexes count] > 0) {
-					key = aSection.key;
+					key = section.key;
 					break;
 				}
 			}
 		}
-					
-		// Remove the object from the various arrays
-		[sectionObjects removeObject:obj];
-		[dic setObject:sectionObjects forKey:key];
 		
-		[[_sections objectAtIndex:sectionIndex] setObjects:sectionObjects];
+		// At this point we should have a 
+		// key - the section key originally used
+		// section - the BSFetchedResultsControllerSection object from which the obj comes from
+		// sectionIndex - the index of the section being altered
+
+		// Remove the object from the various arrays
+		[section removeObject:obj];
 		
 		// If the count is now zero (we just removed the last object), then we need to remove the 
 		// key too
-		if([sectionObjects count] == 0) {
-			[dic removeObjectForKey:key];
-		}
+		if(section.numberOfObjects == 0) {
+			// Add it as a removed section
+			[removedSections setObject:section forKey:[NSNumber numberWithInteger:sectionIndex]];
+			
+			// Remove the section
+			[_sectionsByName removeObjectForKey:key];			
+		}		
+		
 	}
 	
-	// Check to see if the number of sections has changed
-	NSArray *updatedSectionNames = [[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
+	// Update the various properties
+	[_sortedSectionNames release];
+	_sortedSectionNames = [[NSArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
 	
-	// We can now create our section info objects
-	NSMutableArray *theSections = [NSMutableArray array];
-	NSMutableArray *allObjects = [NSMutableArray array];
-	NSMutableDictionary *removedSections = [NSMutableDictionary dictionary];
+	// Update other ordered things
+	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
+	NSMutableArray *allObjects = [[NSMutableArray alloc] init];
+	for(NSString *key in _sortedSectionNames) {
+		[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
+	}
 	
-	for(NSString *key in updatedSectionNames) {
-		
-		// Resort the objects within the section		
-		NSMutableArray *sortedObjs = [dic objectForKey:key];
-		[sortedObjs sortUsingDescriptors:[_fetchRequest sortDescriptors]];
-		if (self.postFetchComparator) {
-			[sortedObjs sortUsingComparator:self.postFetchComparator];
-		}
-		[dic setObject:sortedObjs forKey:key];
-		
-		// Create a Section object
-		BSFetchedResultsControllerSection *aSection = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
-		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
-			aSection.key = key;
-			[aSection setName:[key capitalizedString]];
-			[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];			
-		}
-		[aSection setObjects:sortedObjs];
-		[theSections addObject:aSection];
-		
-		// Add all the objects
-		[allObjects addObjectsFromArray:sortedObjs];
-	}
-
-	for (NSString *key in _sortedSectionNames) {
-		if(![updatedSectionNames containsObject:key]) {
-			// Get the index of the section
-			NSUInteger sectionIndex = [(NSArray *)_sortedSectionNames indexOfObject:key];				
-			[removedSections setObject:[_sections objectAtIndex:sectionIndex] forKey:[NSNumber numberWithInteger:sectionIndex]];
-		}
-	}
-
-	// Update the section objects
-	[_sections release];
-	_sections = [[NSArray alloc] initWithArray:theSections];
-
 	// Update the sectionIndexTitles
 	[_sectionIndexTitles release];
-	_sectionIndexTitles = [[NSArray alloc] initWithArray:[_sections valueForKeyPath:@"indexTitle"]];
-
-	// Update the sorted section names
-	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:updatedSectionNames];		
-
+	_sectionIndexTitles = [[NSArray alloc] initWithArray:indexTitles];
+	
 	// Update the fetchedResults array
 	[_fetchedObjects release];
-	_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];	
+	_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];
 	
-	// Update the _sectionsByName dictionary
-	[_sectionsByName release];
-	_sectionsByName = [[NSDictionary alloc] initWithDictionary:dic];	
+	[indexTitles release];
+	[allObjects release];
 	
 	return removedSections;	
 }
 
 
-- (NSDictionary *)updateFetchedObjects:(NSArray *)objs {
+- (NSDictionary *)updateObjects:(NSArray *)objs {
 
-	// All we really need to do here is check to see if the sort ordering
-	// or sectioning has changed. To do this we're going to need to do 
-	// some exhaustive searching.
+	// This method will get called when an object updates, but also possibly
+	// when an object is being inserted. This happens when we're fetching 
+	// objects which are slaves to a master (such as employee to department)
+	// in the classic scenario, and we add a new slave object to an existing
+	// master object. The change notification will probably be an update.
 	
-	// Get a mutable dictionary of the sections
-	NSMutableDictionary *dic = [NSMutableDictionary dictionaryWithDictionary:(NSDictionary *)_sectionsByName];	
-	
-	// Some objects that we're going to return
+	NSMutableArray *insertedObjects = [NSMutableArray array];
 	NSMutableDictionary *movedObjects = [NSMutableDictionary dictionary];
 	NSMutableDictionary *removedSections = [NSMutableDictionary dictionary];
-	NSMutableArray *addedSections = [NSMutableArray array];
+	NSMutableArray *insertedSections = [NSMutableArray array];
 	
-	// Loop through the array of objects
 	
 	for(id obj in objs) {
-			
-		// Get the key
-		// If there isn't a section key path, use the default key
+		
 		NSString *key = nil;		
 		if(_sectionNameKeyPath) {
 			key = [obj valueForKeyPath:_sectionNameKeyPath];
@@ -1134,151 +1157,184 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 			key = kBSFetchedResultsControllerDefaultSectionName;
 		}
 		
-		if ( ![[dic objectForKey:key] containsObject:obj] ) {
+		BSFetchedResultsControllerSection *section = [_sectionsByName objectForKey:key];
 
-			// This object is not in the section that it should be, so it must be 
-			// somewhere else
+		if(!section) {
+			// Create a Section object
+			section = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
+			if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+				section.key = key;
+				[section setName:[key capitalizedString]];
+				[section setIndexTitle:[self sectionIndexTitleForSectionName:section.name]];			
+			}
+			// Set the objects as an empty array, we'll add the object in a moment
+			[section setObjects:[NSArray array]];
 			
-			NSMutableArray *oldSectionObjects = nil;
+			// Add the section to the array of inserted sections
+			[insertedSections addObject:section];
 			
-			// We need to find it by looking through all the sections
-			NSUInteger rowIndex = 0;
-			NSString *oldKey = nil;
+			// Add the section to the dictionary
+			[_sectionsByName setObject:section forKey:key];
+		}
+		
+		// Check to see if the object is stored in the correct section		
+		if (![section.objects containsObject:obj]) {
+			// The object is not in the section it should now be in.
+			// In other words, it's moved (or it's actually new)
+			
+			NSString *oldKey;
+			
+			BSFetchedResultsControllerSection *oldSection = nil;
 			BOOL flag = NO;
-			for (NSString *aKey in dic) {
+
+			NSUInteger oldSectionIndex, oldRowIndex, numberOfSections = [_sectionsByName count];
+			for (oldSectionIndex=0; oldSectionIndex<numberOfSections; oldSectionIndex++) {
+				
 				// Get the array of objects in the section
-				oldSectionObjects = [dic objectForKey:aKey];
+				oldSection = [_sectionsByName objectForKey:[_sortedSectionNames objectAtIndex:oldSectionIndex]];
 				
 				// Enumerate over the array using a block to find indexes passing a test
-				NSIndexSet *indexes = [oldSectionObjects indexesOfObjectsPassingTest:^(id anObj, NSUInteger idx, BOOL *stop) {
+				NSIndexSet *indexes = [oldSection.objects indexesOfObjectsPassingTest:^(id anObj, NSUInteger idx, BOOL *stop) {
 					// Here we can check to see if the object id of anObj matches obj and if so return 
 					return [[obj objectID] isEqual:[anObj objectID]];
 				}];
 				
 				// Now we need to check to see if we have a value in the index set
 				if ([indexes count] > 0) {
-					rowIndex = [indexes firstIndex];
-					oldKey = aKey;
+					oldRowIndex = [indexes firstIndex];
+					oldKey = oldSection.key;
 					flag = YES;
 					break;
 				}
 			}
 			
-			// Check the flag
-			if (flag) {
+			// We've finished the for loop, but we've got to check to see if we actually found
+			// the object, rather than just exhaustively searched
+			
+			if(!flag) {
+				// We didn't actually find this object
+				NSLog(@"Didn't find object anywhere: %@, so assuming it's an insert.", obj);
+				
+				// Add the object to the array to be inserted
+				[insertedObjects addObject:obj];							
+				
+			} else {
 				
 				// Add the old index path of the object to the moved objects dictionary.
 				// We put the obj in the object to avoid performing a copy.
-				[movedObjects setObject:obj forKey:[NSIndexPath indexPathForRow:rowIndex inSection:[(NSArray *)_sortedSectionNames indexOfObject:oldKey]]];
-					
-				// Get the mutable array of objects for this section
-				NSMutableArray *newSectionObjs = [dic objectForKey:key];
-				
-				// Create this array if it doesn't exist yet
-				if(!newSectionObjs) {
-					newSectionObjs = [NSMutableArray array];
-					[dic setObject:newSectionObjs forKey:key];
-				}
-				
-				// Add the object to the section's array
-				[newSectionObjs addObject:obj];				
+				[movedObjects setObject:obj forKey:[NSIndexPath indexPathForRow:oldRowIndex inSection:oldSectionIndex]];
+
+				// Add the object to the new/current section
+				[section addObject:obj];
 								
-				// Now we can remove the old object from the section objects
-				[oldSectionObjects removeObject:obj];
+				// Remove the object from the old section
+				[oldSection removeObject:obj];
+
 				// If the count is now zero (we just removed the last object), then we need to remove the 
 				// key too
-				if([oldSectionObjects count] == 0) {
-					[dic removeObjectForKey:oldKey];
-				}
-				
-				
-			} else {
-				// There is a problem here as we failed to find the object in the sectional information
-				NSLog(@"There is a bug here somewhere as we're not finding the objects which have changed sections");
-				
-			}			
-		} else {
-			// The section hasn't changed, but it's likely that the sort ordering will still change
-			// so... we need to save the old index
-			[movedObjects setObject:obj forKey:[self indexPathForObject:obj]];
+				if(oldSection.numberOfObjects == 0) {
+					// Add it as a removed section
+					[removedSections setObject:oldSection forKey:[NSNumber numberWithInteger:oldSectionIndex]];
+					
+					// Remove the section
+					[_sectionsByName removeObjectForKey:key];			
+				}				
+			} // End of flag check
 			
-		} // End of sectionNameKeyPath check 
-		
-	} // End of iteration through the objects
-	
-	// Update the various data structures
-	
-	// Check to see if the number of sections has changed
-	NSArray *updatedSectionNames = [[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
-	
-	// We can now create our section info objects
-	NSMutableArray *theSections = [NSMutableArray array];
-	NSMutableArray *allObjects = [NSMutableArray array];
-	
-	for(NSString *key in updatedSectionNames) {
-		
-		// Resort the objects within the section		
-		NSMutableArray *sortedObjs = [dic objectForKey:key];
-		[sortedObjs sortUsingDescriptors:[_fetchRequest sortDescriptors]];
-		if(self.postFetchComparator) {
-			[sortedObjs sortUsingComparator:self.postFetchComparator];
-		}		
-		[dic setObject:sortedObjs forKey:key];
-		
-		// Create a Section object
-		BSFetchedResultsControllerSection *aSection = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
-		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
-			aSection.key = key;
-			[aSection setName:[key capitalizedString]];
-			[aSection setIndexTitle:[self sectionIndexTitleForSectionName:aSection.name]];			
+		} else {
+			// The object is in the same section, but it's likely that the ordering will, so we'll save the
+			// current indexPath
+			[movedObjects setObject:obj forKey:[self indexPathForObject:obj]];
 		}
-		[aSection setObjects:sortedObjs];
-		[theSections addObject:aSection];
-		
-		// See if this is a new section
-		if (![_sortedSectionNames containsObject:key]) {
-			[addedSections addObject:aSection];
-		}		
-		// Add all the objects
-		[allObjects addObjectsFromArray:sortedObjs];
 	}
 	
-	// Need to look out for deleted sections too
+	// If we've detected objects which need to be inserted we can do that now
+	if ([insertedObjects count] > 0) {
+		// Insert objects
+		NSArray *tmp = [self insertObjects:insertedObjects];
+		// If this resulted in any inserted sections, then we can add them to the array
+		[insertedSections addObjectsFromArray:[tmp objectsPassingTest:^ BOOL (id obj, BOOL *stop) {
+			return ![insertedSections containsObject:obj];
+		}]];
+	}		
+	
+	// Now that we've gone through and inserted all the objects, we can go through again and resort
+	// We do this in two passes so that we all all the objects then do one sort, otherwise we'd do
+	// unnecessary sorting
+	
+	if([_fetchRequest sortDescriptors] || self.postFetchComparator) {
+		
+		// Enumerate the objects and put them into the dictionary sections
+		[objs enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
+			
+			// If there isn't a section key path, use the default key
+			NSString *key = nil;		
+			if(_sectionNameKeyPath) {
+				key = [obj valueForKeyPath:_sectionNameKeyPath];
+			} else {
+				key = kBSFetchedResultsControllerDefaultSectionName;
+			}
+			
+			// Get the section object for this key
+			BSFetchedResultsControllerSection *section = [_sectionsByName objectForKey:key];
+			
+			// Get the objects
+			NSMutableArray *objects = [NSMutableArray arrayWithArray:section.objects];
+			
+			// Resort
+			if([_fetchRequest sortDescriptors]) {
+				[objects sortUsingDescriptors:[_fetchRequest sortDescriptors]];
+			}
+			if(self.postFetchComparator) {
+				[objects sortUsingComparator:self.postFetchComparator];
+			}
+			
+			// Set the objects back
+			[section setObjects:objects];
+		}];
+	}
+	
+	
+	// We need to work out which sections have changed
+	NSArray *updatedSectionNames = [[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
+
+	// Loop through the unmodified sorted section names
 	for (NSString *key in _sortedSectionNames) {
 		if(![updatedSectionNames containsObject:key]) {
 			// Get the index of the section
 			NSUInteger sectionIndex = [(NSArray *)_sortedSectionNames indexOfObject:key];				
-			[removedSections setObject:[_sections objectAtIndex:sectionIndex] forKey:[NSNumber numberWithInteger:sectionIndex]];
-		}
+			[removedSections setObject:[_sectionsByName objectForKey:[_sortedSectionNames objectAtIndex:sectionIndex]] 
+								forKey:[NSNumber numberWithInteger:sectionIndex]];
+		}		
 	}
 	
-	
-	// Update the sortedSectionNames
+	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[[dic allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];	
+	_sortedSectionNames = [[NSArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
 	
-	// Update the section objects
-	[_sections release];
-	_sections = [[NSArray alloc] initWithArray:theSections];
+	// Update other ordered things
+	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
+	NSMutableArray *allObjects = [[NSMutableArray alloc] init];
+	for(NSString *key in _sortedSectionNames) {
+		[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
+	}
 	
 	// Update the sectionIndexTitles
 	[_sectionIndexTitles release];
-	_sectionIndexTitles = [[NSArray alloc] initWithArray:[_sections valueForKeyPath:@"indexTitle"]];
-	
-	// Update the _sectionsByName dictionary
-	[_sectionsByName release];
-	_sectionsByName = [[NSDictionary alloc] initWithDictionary:dic];	
+	_sectionIndexTitles = [[NSArray alloc] initWithArray:indexTitles];
 	
 	// Update the fetchedResults array
 	[_fetchedObjects release];
 	_fetchedObjects = [[NSArray alloc] initWithArray:allObjects];
 	
-	
+	[indexTitles release];
+	[allObjects release];
 	
 	// We now need to package up the various changes into a dictionary to return	
 	return [NSDictionary dictionaryWithObjectsAndKeys:
 			movedObjects, @"movedObjects", 
-			addedSections, @"addedSections", 
+			insertedSections, @"insertedSections", 
 			removedSections, @"removedSections", 
 			nil];
 }

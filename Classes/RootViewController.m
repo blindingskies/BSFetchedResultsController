@@ -266,7 +266,7 @@
 	    
     // Edit the section name key path and cache name if appropriate.
     // nil for section name key path means "no sections".
-    BSFetchedResultsController *aFetchedResultsController = [[BSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:self.managedObjectContext sectionNameKeyPath:@"state.name" cacheName:nil];
+    BSFetchedResultsController *aFetchedResultsController = [[BSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:self.managedObjectContext sectionNameKeyPath:@"state.name" cacheName:@"USStatesAndCities"];
     aFetchedResultsController.delegate = self;
     self.fetchedResultsController = aFetchedResultsController;
     
