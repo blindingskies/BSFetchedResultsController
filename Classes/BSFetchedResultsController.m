@@ -383,7 +383,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	// If we have a cache name, check to see if we have a cache
 	// and that it's valid
 	if(_cacheName && [self readCache]) {
-		NSLog(@"Successfully validated cache");
 		
 		// Copy objects over from the cache
 		for(BSFetchedResultsControllerSection *section in [_persistentCache sections]) {
@@ -434,7 +433,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		return NO;
 	}
 	
-	NSLog(@"fetched %d objects", [results count]);	
 	if([results count] > 0) {
 		
 		if(self.postFetchFilterPredicate) {
@@ -539,9 +537,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	
 	// Return false if we haven't got a cache name
 	if(!_cacheName) return NO;
-	
-	NSLog(@"Reading cache");
-	
+		
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
 	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
@@ -576,9 +572,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		NSLog(@"Cache difference: post fetch filter predicate");
 		return NO;
 	}
-	
-	NSLog(@"Cache seems to be the same");
-	
+		
 	// If we've got this far then all the various objects which define the controller match the cache
 	// so, assuming that the cache has kept up to date we can start using it again.
 	
@@ -594,9 +588,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 
 	// Return if we haven't got a cache name
 	if(!_cacheName) return;
-	
-	NSLog(@"Writing cache");	
-	
+		
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
 	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
