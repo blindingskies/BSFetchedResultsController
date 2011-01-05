@@ -58,14 +58,12 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 
 @class BSFetchedResultsControllerSectionInfoCache;
 
-NS_CLASS_AVAILABLE(NA, 3_0)
 @interface BSFetchedResultsController : NSObject {
 @private
 	// These are all objects synonomous with NSFetchedResultsController
 	NSFetchRequest *_fetchRequest;
 	NSManagedObjectContext *_managedObjectContext;
 	NSString *_sectionNameKeyPath;
-	NSString *_sectionNameKey;
 	NSString *_cacheName;
 	BSFetchedResultsControllerSectionInfoCache *_persistentCache;
 	
@@ -75,8 +73,7 @@ NS_CLASS_AVAILABLE(NA, 3_0)
 	NSMutableDictionary *_sectionsByName;
 	NSMutableDictionary *_sectionNamesByObject;
 	
-	id _sectionIndexTitles;
-	id _sectionIndexTitlesSections;	
+	id _sectionIndexTitles;	
 
 	// Additional objects	
 	
@@ -99,7 +96,6 @@ NS_CLASS_AVAILABLE(NA, 3_0)
 	
 	// Notification Handlers
 	id didChangeNotificationHandler;
-	id didSaveNotificationHandler;
 	BOOL handlingChange;
 	
 }

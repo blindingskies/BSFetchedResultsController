@@ -194,7 +194,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSPredicate *fetchPredicate;
 	NSArray *sortDescriptors;
 	NSString *sectionNameKeyPath;
-	NSArray *sections;
+	NSDictionary *sectionsByName;
 	NSPredicate *postFetchFilterPredicate;
 	
 }
@@ -203,7 +203,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 @property (nonatomic, readwrite, retain) NSPredicate *fetchPredicate;
 @property (nonatomic, readwrite, retain) NSArray *sortDescriptors;
 @property (nonatomic, readwrite, retain) NSString *sectionNameKeyPath;
-@property (nonatomic, readwrite, retain) NSArray *sections;
+@property (nonatomic, readwrite, retain) NSDictionary *sectionsByName;
 @property (nonatomic, readwrite, retain) NSPredicate *postFetchFilterPredicate;
 
 - (void)spawnObjectsFromContext:(NSManagedObjectContext *)context;
@@ -216,7 +216,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 @synthesize fetchPredicate;
 @synthesize sortDescriptors;
 @synthesize sectionNameKeyPath;
-@synthesize sections;
+@synthesize sectionsByName;
 @synthesize postFetchFilterPredicate;
 
 - (void)dealloc {
@@ -224,7 +224,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	self.fetchPredicate = nil; [fetchPredicate release];
 	self.sortDescriptors = nil; [sortDescriptors release];
 	self.sectionNameKeyPath = nil; [sectionNameKeyPath release];	
-	self.sections = nil; [sections release];
+	self.sectionsByName = nil; [sectionsByName release];
 	self.postFetchFilterPredicate = nil; [postFetchFilterPredicate release];
 	[super dealloc];
 }
@@ -238,7 +238,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		self.sortDescriptors = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey];
 		self.sectionNameKeyPath = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionNameKeyPathKey];
 		self.postFetchFilterPredicate = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCachePostFetchPredicateKey];
-		self.sections = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionsKey];
+		self.sectionsByName = [aDecoder decodeObjectForKey:kBSFRCSectionInfoCacheSectionsKey];
 	}
 	return self;
 }
@@ -250,7 +250,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	[aCoder encodeObject:sortDescriptors forKey:kBSFRCSectionInfoCacheFetchRequestSortDescriptorsKey];
 	[aCoder encodeObject:sectionNameKeyPath forKey:kBSFRCSectionInfoCacheSectionNameKeyPathKey];
 	[aCoder encodeObject:postFetchFilterPredicate forKey:kBSFRCSectionInfoCachePostFetchPredicateKey];
-	[aCoder encodeObject:sections forKey:kBSFRCSectionInfoCacheSectionsKey];
+	[aCoder encodeObject:sectionsByName forKey:kBSFRCSectionInfoCacheSectionsKey];
 }
 
 - (void)spawnObjectsFromContext:(NSManagedObjectContext *)context {
@@ -258,7 +258,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSPersistentStoreCoordinator *storeCoordinator = [context persistentStoreCoordinator];
 	
 	// Iterate through the sections
-	for (BSFetchedResultsControllerSection *section in sections) {
+	for (BSFetchedResultsControllerSection *section in [sectionsByName allValues]) {
 		
 		// Create a NSMutableArray
 		NSArray *objs = [section objects];
@@ -385,7 +385,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	if(_cacheName && [self readCache]) {
 		
 		// Copy objects over from the cache
-		for(BSFetchedResultsControllerSection *section in [_persistentCache sections]) {
+		for(BSFetchedResultsControllerSection *section in [[_persistentCache sectionsByName] allValues]) {
 			
 			// Resort the objects within the section
 			NSMutableArray *objs = [NSMutableArray arrayWithArray:section.objects];
@@ -407,7 +407,9 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
 		NSMutableArray *allObjects = [[NSMutableArray alloc] init];
 		for(NSString *key in _sortedSectionNames) {
-			[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+			if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+				[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+			}
 			[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
 		}
 		
@@ -541,7 +543,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
 	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
-
+	
 	// First of all we need to decode the cache
 	_persistentCache = (BSFetchedResultsControllerSectionInfoCache *)[NSKeyedUnarchiver unarchiveObjectWithFile:path];
 
@@ -592,7 +594,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	// Create a path to the cache
 	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
 	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, _cacheName];
-	
+		
 	// First check to see if a file exists at this path
 	NSURL *url = [NSURL fileURLWithPath:path isDirectory:NO];
 	NSError *error = nil;
@@ -619,7 +621,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).fetchPredicate = [_fetchRequest predicate];
 	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sortDescriptors = [_fetchRequest sortDescriptors];
 	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sectionNameKeyPath = _sectionNameKeyPath;
-	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sections = self.sections;
+	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).sectionsByName = _sectionsByName;
 	((BSFetchedResultsControllerSectionInfoCache *)_persistentCache).postFetchFilterPredicate = postFetchFilterPredicate;
 	
 	// Encode the cache
@@ -863,9 +865,10 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		
 		
 		
-		// -- UPDATED OBJECTS -- //
+		// -- UPDATED & REFRESHED OBJECTS -- //
 
-		NSSet *updatedObjects = [[userInfo objectForKey:NSUpdatedObjectsKey] filteredSetUsingPredicate:compoundPredicate];
+		
+		NSSet *updatedObjects = [[[userInfo objectForKey:NSUpdatedObjectsKey] setByAddingObjectsFromSet:[userInfo objectForKey:NSRefreshedObjectsKey]] filteredSetUsingPredicate:compoundPredicate];
 		if(self.postFetchFilterTest) {
 			updatedObjects = [updatedObjects objectsPassingTest:self.postFetchFilterTest];
 		}
@@ -884,13 +887,10 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 			if([self.delegate respondsToSelector:@selector(controllerDidChangeContent:)])
 				[self.delegate controllerDidChangeContent:self];
 		}
-				
-	}];
 
-	didSaveNotificationHandler = [nc addObserverForName:NSManagedObjectContextDidSaveNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
-		
 		// Write the cache
 		[self writeCache];
+		
 	}];
 	
 }
@@ -900,9 +900,6 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];	
 	if(didChangeNotificationHandler) {
 		[nc removeObserver:didChangeNotificationHandler];		
-	}
-	if(didSaveNotificationHandler) {
-		[nc removeObserver:didSaveNotificationHandler];
 	}
 }
 
@@ -933,8 +930,8 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		if(!section) {
 			// Create a Section object
 			section = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
+			section.key = key;
 			if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
-				section.key = key;
 				[section setName:[key capitalizedString]];
 				[section setIndexTitle:[self sectionIndexTitleForSectionName:section.name]];			
 			}
@@ -1006,7 +1003,9 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
 	NSMutableArray *allObjects = [[NSMutableArray alloc] init];
 	for(NSString *key in _sortedSectionNames) {
-		[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+			[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		}
 		[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
 	}
 	
@@ -1107,7 +1106,9 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
 	NSMutableArray *allObjects = [[NSMutableArray alloc] init];
 	for(NSString *key in _sortedSectionNames) {
-		[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+			[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		}
 		[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
 	}
 	
@@ -1154,8 +1155,8 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 		if(!section) {
 			// Create a Section object
 			section = [[[BSFetchedResultsControllerSection alloc] init] autorelease];
+			section.key = key;
 			if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
-				section.key = key;
 				[section setName:[key capitalizedString]];
 				[section setIndexTitle:[self sectionIndexTitleForSectionName:section.name]];			
 			}
@@ -1229,7 +1230,7 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 					[removedSections setObject:oldSection forKey:[NSNumber numberWithInteger:oldSectionIndex]];
 					
 					// Remove the section
-					[_sectionsByName removeObjectForKey:key];			
+					[_sectionsByName removeObjectForKey:oldKey];			
 				}				
 			} // End of flag check
 			
@@ -1308,7 +1309,9 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
 	NSMutableArray *allObjects = [[NSMutableArray alloc] init];
 	for(NSString *key in _sortedSectionNames) {
-		[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		if( ![key isEqualToString:kBSFetchedResultsControllerDefaultSectionName] ) {
+			[indexTitles addObject:[[_sectionsByName objectForKey:key] indexTitle]];
+		}
 		[allObjects addObjectsFromArray:[[_sectionsByName objectForKey:key] objects]];
 	}
 	
