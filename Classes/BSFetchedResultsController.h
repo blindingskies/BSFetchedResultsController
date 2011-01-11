@@ -193,7 +193,11 @@ the result set. */
 @property (nonatomic, readonly) NSArray *sections;
 
 
+/* -----------------------------------------------------
+			Class Methods
+ ----------------------------------------------------- */
 
++ (BOOL)deleteCache:(NSString *)aCacheName;
 
 
 @end

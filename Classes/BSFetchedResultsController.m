@@ -529,6 +529,25 @@ NSString *const kBSFRCSectionCacheObjectsKey = @"kBSFRCSectionCacheObjectsKey";
 	}];
 }
 
+#pragma mark -
+#pragma mark Class Methods
+
++ (BOOL)deleteCache:(NSString *)aCacheName {
+	// Create a path to the cache
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);		
+	NSString *path = [NSString stringWithFormat:@"%@/%@/%@.cache", [paths objectAtIndex:0], kBSFetchedResultsControllerCachePath, aCacheName];
+	
+	NSFileManager *fileManager = [NSFileManager defaultManager];
+	NSError *error = nil;
+	if (![fileManager removeItemAtPath:path error:&error]) {
+		// print the error message
+		NSLog(@"failed to delete cache: %@", [error userInfo]);
+		return NO;
+	}
+	return YES;
+}
+
+
 									
 #pragma mark -
 #pragma mark Private Methods
