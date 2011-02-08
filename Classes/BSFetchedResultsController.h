@@ -49,6 +49,12 @@ extern NSString *const kBSFRCSectionCacheNameKey;
 extern NSString *const kBSFRCSectionCacheIndexTitleKey;
 extern NSString *const kBSFRCSectionCacheObjectsKey;
 
+typedef enum {
+	kBSFRCGroupFilteredObjectsNone,
+	kBSFRCGroupFilteredObjectsAsFinalSection,
+	kBSFRCGroupFilteredObjectsAsFinalRow
+} BSFRCGroupFilteredObjectsOptions;
+
 
 // Define a type for a filter block
 typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop);
@@ -57,6 +63,7 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 @protocol BSFetchedResultsControllerDelegate;
 
 @class BSFetchedResultsControllerSectionInfoCache;
+@class BSFetchedResultsControllerAbstractContainer;
 
 @interface BSFetchedResultsController : NSObject {
 @private
@@ -67,6 +74,9 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 	NSString *_cacheName;
 	BSFetchedResultsControllerSectionInfoCache *_persistentCache;
 	
+	// A flag which we set once we've perform a fetch.
+	BOOL _havePerformedFetched;
+	
 	id _delegate;	
 	id _fetchedObjects;
 	NSMutableArray *_sortedSectionNames;
@@ -74,8 +84,12 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 	NSMutableDictionary *_sectionNamesByObject;
 	
 	id _sectionIndexTitles;	
-
-	// Additional objects	
+	
+	// Set this enum property to define how filtered objects are displayed
+	// defaults to 0 (not made available at all)
+	// 1 - will be provided as an extra section at the end
+	// 2 - will be provided as an extra row at the end of the last section
+	BSFRCGroupFilteredObjectsOptions groupFilteredObjects;
 	
 	// Dispatch queue used for queuing DidChange notifications
 	dispatch_queue_t didChangeQueue;
@@ -137,10 +151,10 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 
 /* A Block object which is filters objects that don't pass the test from
 the result set. */
-@property (nonatomic, retain) BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
+@property (nonatomic, copy) BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
 
 /* An NSComparator block which sorts the objects after filtering and sectioning */
-@property (nonatomic, retain) NSComparator postFetchComparator;
+@property (nonatomic, copy) NSComparator postFetchComparator;
 
 /* -----------------------------------------------------
 			Accessing Fetched Objects
@@ -158,6 +172,16 @@ the result set. */
 /* Returns the indexPath of a given object.
  */
 -(NSIndexPath *)indexPathForObject:(id)object;
+
+
+/* -----------------------------------------------------
+			Accessing Filtered Objects
+ ----------------------------------------------------- */
+
+// Set this property before executing the fetch to determine how 
+// any objects filtered as a result of the postFetchFilters are made
+// available, either not at all, as a section or a row placeholder.
+@property (nonatomic, readwrite) BSFRCGroupFilteredObjectsOptions groupFilteredObjects;
 
 
 /* -----------------------------------------------------
@@ -250,3 +274,15 @@ the result set. */
 - (void)controllerDidChangeContent:(BSFetchedResultsController *)aController;
 
 @end
+
+
+
+@interface BSFetchedResultsControllerAbstractContainer : NSObject <NSCoding> {
+@private
+	NSMutableArray *items;
+}
+
+@property (nonatomic, readwrite, retain) NSMutableArray *items;
+
+@end
+
