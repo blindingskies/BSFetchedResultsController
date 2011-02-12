@@ -48,13 +48,7 @@ extern NSString *const kBSFRCSectionCacheKeyKey;
 extern NSString *const kBSFRCSectionCacheNameKey;
 extern NSString *const kBSFRCSectionCacheIndexTitleKey;
 extern NSString *const kBSFRCSectionCacheObjectsKey;
-
-typedef enum {
-	kBSFRCGroupFilteredObjectsNone,
-	kBSFRCGroupFilteredObjectsAsFinalSection,
-	kBSFRCGroupFilteredObjectsAsFinalRow
-} BSFRCGroupFilteredObjectsOptions;
-
+extern NSString *const kBSFRCSectionCacheFilteredKey;
 
 // Define a type for a filter block
 typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop);
@@ -75,9 +69,10 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 	BSFetchedResultsControllerSectionInfoCache *_persistentCache;
 	
 	// A flag which we set once we've perform a fetch.
-	BOOL _havePerformedFetched;
+	BOOL _havePerformedFetch;
 	
-	id _delegate;	
+	id _delegate;
+	id _allObjects;
 	id _fetchedObjects;
 	NSMutableArray *_sortedSectionNames;
 	NSMutableDictionary *_sectionsByName;
@@ -89,7 +84,7 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 	// defaults to 0 (not made available at all)
 	// 1 - will be provided as an extra section at the end
 	// 2 - will be provided as an extra row at the end of the last section
-	BSFRCGroupFilteredObjectsOptions groupFilteredObjects;
+	BOOL showFilteredObjectsAsGroup;
 	
 	// Dispatch queue used for queuing DidChange notifications
 	dispatch_queue_t didChangeQueue;
@@ -103,6 +98,7 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 	// A test block which will furthermore filter objects from the result array which
 	// fail the test. This block received an object, index and stop flag.
 	BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
+	BOOL enablePostFilterTest;
 	
 	// An NSComparator block which receives two objects and returns either 
 	// NSOrderedAscending, NSOrderedDescending or NSOrderedSame
@@ -153,6 +149,10 @@ typedef BOOL(^BSFetchedResultsControllerPostFetchFilterTest)(id obj, BOOL *stop)
 the result set. */
 @property (nonatomic, copy) BSFetchedResultsControllerPostFetchFilterTest postFetchFilterTest;
 
+/* A boolean flag which can enable and disable the above filter test, doing so will trigger
+ table updates. */
+@property (nonatomic, readwrite) BOOL enablePostFilterTest;
+
 /* An NSComparator block which sorts the objects after filtering and sectioning */
 @property (nonatomic, copy) NSComparator postFetchComparator;
 
@@ -181,7 +181,7 @@ the result set. */
 // Set this property before executing the fetch to determine how 
 // any objects filtered as a result of the postFetchFilters are made
 // available, either not at all, as a section or a row placeholder.
-@property (nonatomic, readwrite) BSFRCGroupFilteredObjectsOptions groupFilteredObjects;
+@property (nonatomic, readwrite) BOOL showFilteredObjectsAsGroup;
 
 
 /* -----------------------------------------------------
@@ -276,13 +276,15 @@ the result set. */
 @end
 
 
-
-@interface BSFetchedResultsControllerAbstractContainer : NSObject <NSCoding> {
-@private
+@interface BSFetchedResultsControllerAbstractContainer : NSObject {
+	id section;
 	NSMutableArray *items;
 }
 
+@property (nonatomic, readwrite, assign) id section;
 @property (nonatomic, readwrite, retain) NSMutableArray *items;
 
 @end
+
+
 

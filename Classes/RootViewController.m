@@ -20,6 +20,9 @@
 
 @synthesize managedObjectContext=managedObjectContext_;
 @synthesize fetchedResultsController;
+@synthesize toggleFilter;
+@synthesize showOrHideFilteredGroup;
+@synthesize enableFilter, showFilteredItemGroup;
 
 #pragma mark -
 #pragma mark View lifecycle
@@ -27,6 +30,29 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
+	self.title = @"US Cities";
+	
+	self.enableFilter = NO;
+	self.showFilteredItemGroup = YES;
+	
+	// Create toolbar items
+	UIBarButtonItem *aButton = [[UIBarButtonItem alloc] initWithTitle:@"Toggle Filter" style:UIBarButtonItemStyleBordered target:self action:@selector(toggleFilter:)];
+	self.toggleFilter = aButton;
+	UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
+	UIBarButtonItem *toggleShowingFilteredGroup = [[UIBarButtonItem alloc] initWithTitle:@"Show/Hide Filtered Group" style:UIBarButtonItemStyleBordered target:self action:@selector(toggleShowingFilteredItemsGroup:)];
+	if (self.showFilteredItemGroup) {
+		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStyleDone];
+	} else {
+		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStyleBordered];
+	}
+	toggleShowingFilteredGroup.enabled = self.enableFilter; 
+	self.showOrHideFilteredGroup = toggleShowingFilteredGroup;
+	NSArray *items = [NSArray arrayWithObjects:toggleShowingFilteredGroup, flexibleSpace, aButton, nil];
+	[aButton release];
+	[flexibleSpace release];
+	[toggleShowingFilteredGroup release];
+	[self setToolbarItems:items animated:NO];
+	
     // Set up the edit and add buttons.
     self.navigationItem.leftBarButtonItem = self.editButtonItem;
     
@@ -74,20 +100,33 @@
 
 - (void)configureCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath {
   
-	City *city = [self.fetchedResultsController objectAtIndexPath:indexPath];
-	if(city.isCapitalValue) {
-		cell.textLabel.font = [UIFont boldSystemFontOfSize:[UIFont labelFontSize]]; 
-	} else {
+	id obj = [self.fetchedResultsController objectAtIndexPath:indexPath];
+
+	if ([obj isKindOfClass:[BSFetchedResultsControllerAbstractContainer class]]) {
+		// This is the filtered objects container
 		cell.textLabel.font = [UIFont systemFontOfSize:[UIFont labelFontSize]];
-	}
-	cell.textLabel.text = city.name;
-	cell.detailTextLabel.text = [formatter stringFromNumber:city.population];
+		cell.textLabel.text = @"Small Cities";
+		cell.textLabel.textColor = [UIColor grayColor];
+		cell.detailTextLabel.text = [NSString stringWithFormat:@"%d cities", [((BSFetchedResultsControllerAbstractContainer *)obj).items count]];		
+		
+	} else {
+		
+		City *city = (City *)obj;
+		if(city.isCapitalValue) {
+			cell.textLabel.font = [UIFont boldSystemFontOfSize:[UIFont labelFontSize]]; 
+		} else {
+			cell.textLabel.font = [UIFont systemFontOfSize:[UIFont labelFontSize]];
+		}
+		cell.textLabel.text = city.name;
+		cell.textLabel.textColor = [UIColor blackColor];		
+		cell.detailTextLabel.text = [formatter stringFromNumber:city.population];		
+	}	
 
 }
 
 
 #pragma mark -
-#pragma mark Add a new object
+#pragma mark Action
 
 - (void)insertNewObject {
     
@@ -114,7 +153,7 @@
 	[aState addCitiesObject:aCity];
 	aCity.state = aState;
 		
-	NSLog(@"Inserting %@%@ (%@)", aCity.name, aCity.isCapitalValue ? @"*" : @"", aState.name);
+	NSLog(@"Inserting %@%@ (%@) %@", aCity.name, aCity.isCapitalValue ? @"*" : @"", aState.name, aCity.population);
 	
     // Save the context.
     NSError *error = nil;
@@ -143,7 +182,35 @@
     }
 	
 	// Animate the table to the correct row
-	[self.tableView scrollToRowAtIndexPath:[self.fetchedResultsController indexPathForObject:aCity] atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
+	NSIndexPath *indexPath = [self.fetchedResultsController indexPathForObject:aCity];
+	if (indexPath && indexPath.section != NSNotFound && indexPath.row != NSNotFound) {
+		[self.tableView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionMiddle animated:YES];
+	}
+
+}
+
+
+- (IBAction)toggleFilter:(id)sender {
+	// Toggle the filter on the controller
+	self.enableFilter = !enableFilter;
+	self.fetchedResultsController.enablePostFilterTest = self.enableFilter;
+	if (enableFilter) {
+		[self.toggleFilter setStyle:UIBarButtonItemStyleDone];
+	} else {
+		[self.toggleFilter setStyle:UIBarButtonItemStyleBordered];
+	}
+	self.showOrHideFilteredGroup.enabled = self.enableFilter;
+}
+
+- (IBAction)toggleShowingFilteredItemsGroup:(id)sender {
+	// Toggle the filter on the controller
+	self.showFilteredItemGroup = !showFilteredItemGroup;
+	self.fetchedResultsController.showFilteredObjectsAsGroup = self.showFilteredItemGroup;
+	if (self.showFilteredItemGroup) {
+		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStyleDone];
+	} else {
+		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStyleBordered];
+	}
 }
 
 
@@ -187,6 +254,9 @@
     // Configure the cell.
     [self configureCell:cell atIndexPath:indexPath];
     
+	cell.isAccessibilityElement = YES;
+	cell.accessibilityLabel = @"US City";
+	
     return cell;
 }
 
@@ -207,7 +277,15 @@
     if (editingStyle == UITableViewCellEditingStyleDelete) {
         // Delete the managed object for the given index path
         NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
-        [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
+		id obj = [self.fetchedResultsController objectAtIndexPath:indexPath];
+		if ([obj isKindOfClass:[BSFetchedResultsControllerAbstractContainer class]]) {
+			// If we've got an array, it's because it's a container of filtered cities
+			for (City *aCity in ((BSFetchedResultsControllerAbstractContainer *)obj).items) {
+				[context deleteObject:aCity];
+			}
+		} else {
+			[context deleteObject:obj];
+		}
         
         // Save the context.
         NSError *error = nil;
@@ -266,7 +344,7 @@
 	    
     // Edit the section name key path and cache name if appropriate.
     // nil for section name key path means "no sections".
-    BSFetchedResultsController *aFetchedResultsController = [[BSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:self.managedObjectContext sectionNameKeyPath:@"state.name" cacheName:@"USStatesAndCities"];
+    BSFetchedResultsController *aFetchedResultsController = [[BSFetchedResultsController alloc] initWithFetchRequest:fetchRequest managedObjectContext:self.managedObjectContext sectionNameKeyPath:@"state.name" cacheName:nil/*@"USStatesAndCities"*/];
     aFetchedResultsController.delegate = self;
     self.fetchedResultsController = aFetchedResultsController;
     
@@ -279,21 +357,36 @@
 	// Add a post fetch sort comparator
 	fetchedResultsController.postFetchComparator = ^(id a, id b) {
 		// if the city is a capital, it always comes before non-capitals
-		if (((City *)a).isCapitalValue && !((City *)b).isCapitalValue) {
-			return NSOrderedAscending;
-		} else if (!((City *)a).isCapitalValue && ((City *)b).isCapitalValue) {
-			return NSOrderedDescending;
-		} else {
-			if ([((City *)a).population integerValue] > [((City *)b).population integerValue]) {
-				return NSOrderedAscending;
-			} else if ([((City *)a).population integerValue] < [((City *)b).population integerValue]) {
-				return NSOrderedDescending;
-			} else {
-				return [((City *)a).name caseInsensitiveCompare:((City *)b).name];				
-			}
-		}	
+		NSComparisonResult result = [((City *)a).isCapital compare:((City *)b).isCapital];		
+		if (result != NSOrderedSame)
+			return -1 * result; // Descending order
+
+		// Compare the populations
+		result = [((City *)a).population compare:((City *)b).population];		
+		if (result != NSOrderedSame)
+			return -1 * result; // Descending order
+		
+		// Fall back to names
+		return [((City *)a).name caseInsensitiveCompare:((City *)b).name];				
 	};	
 
+	// Add a post fetch filter test
+//	fetchedResultsController.postFetchFilterPredicate = [NSPredicate predicateWithFormat:@"population > %d", 100000];
+	
+	// Add a post fetch filter test
+	fetchedResultsController.postFetchFilterTest = ^(id obj, BOOL *stop) {
+		if ([(City *)obj populationValue] > 100000) {
+			return YES;
+		} else {
+			return NO;
+		}
+	};
+	
+	// Set the options how how we want to access filtered objects (if at all)
+	fetchedResultsController.enablePostFilterTest = self.enableFilter;	
+	fetchedResultsController.showFilteredObjectsAsGroup = self.showFilteredItemGroup;
+
+	
 	
     NSError *error = nil;
     if (![fetchedResultsController performFetch:&error]) {
@@ -399,6 +492,8 @@
     [managedObjectContext_ release];
     [super dealloc];
 }
+
+
 
 
 @end
