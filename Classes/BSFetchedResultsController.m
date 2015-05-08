@@ -1421,7 +1421,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 					if (showFilteredObjectsAsGroup) {
 						
 						// The old section has changed
-						if ([oldSection.filtered count] > 0) {
+						if ([oldSection.filteredItems count] > 0) {
 							// We need to update the old section's filtered object container row
 							[updatedObjects addObject:oldSection.filtered];
 						} else {
