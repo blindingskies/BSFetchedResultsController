@@ -36,14 +36,14 @@
 	self.showFilteredItemGroup = YES;
 	
 	// Create toolbar items
-	UIBarButtonItem *aButton = [[UIBarButtonItem alloc] initWithTitle:@"Toggle Filter" style:UIBarButtonItemStyleBordered target:self action:@selector(toggleFilter:)];
+	UIBarButtonItem *aButton = [[UIBarButtonItem alloc] initWithTitle:@"Toggle Filter" style:UIBarButtonItemStylePlain target:self action:@selector(toggleFilter:)];
 	self.toggleFilter = aButton;
 	UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-	UIBarButtonItem *toggleShowingFilteredGroup = [[UIBarButtonItem alloc] initWithTitle:@"Show/Hide Filtered Group" style:UIBarButtonItemStyleBordered target:self action:@selector(toggleShowingFilteredItemsGroup:)];
+	UIBarButtonItem *toggleShowingFilteredGroup = [[UIBarButtonItem alloc] initWithTitle:@"Show/Hide Filtered Group" style:UIBarButtonItemStylePlain target:self action:@selector(toggleShowingFilteredItemsGroup:)];
 	if (self.showFilteredItemGroup) {
 		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStyleDone];
 	} else {
-		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStyleBordered];
+		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStylePlain];
 	}
 	toggleShowingFilteredGroup.enabled = self.enableFilter; 
 	self.showOrHideFilteredGroup = toggleShowingFilteredGroup;
@@ -197,7 +197,7 @@
 	if (enableFilter) {
 		[self.toggleFilter setStyle:UIBarButtonItemStyleDone];
 	} else {
-		[self.toggleFilter setStyle:UIBarButtonItemStyleBordered];
+		[self.toggleFilter setStyle:UIBarButtonItemStylePlain];
 	}
 	self.showOrHideFilteredGroup.enabled = self.enableFilter;
 }
@@ -209,7 +209,7 @@
 	if (self.showFilteredItemGroup) {
 		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStyleDone];
 	} else {
-		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStyleBordered];
+		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStylePlain];
 	}
 }
 
@@ -355,7 +355,7 @@
 	
 	
 	// Add a post fetch sort comparator
-	fetchedResultsController.postFetchComparator = ^(id a, id b) {
+	fetchedResultsController.postFetchComparator = ^NSComparisonResult(id a, id b) {
 		// if the city is a capital, it always comes before non-capitals
 		NSComparisonResult result = [((City *)a).isCapital compare:((City *)b).isCapital];		
 		if (result != NSOrderedSame)
@@ -374,7 +374,7 @@
 //	fetchedResultsController.postFetchFilterPredicate = [NSPredicate predicateWithFormat:@"population > %d", 100000];
 	
 	// Add a post fetch filter test
-	fetchedResultsController.postFetchFilterTest = ^(id obj, BOOL *stop) {
+	fetchedResultsController.postFetchFilterTest = ^BOOL(id obj, BOOL *stop) {
 		if ([(City *)obj populationValue] > 100000) {
 			return YES;
 		} else {
@@ -422,6 +422,11 @@
             
         case NSFetchedResultsChangeDelete:
             [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:sectionIndex] withRowAnimation:UITableViewRowAnimationFade];
+            break;
+
+        case NSFetchedResultsChangeMove:
+            break;
+        case NSFetchedResultsChangeUpdate:
             break;
     }
 }
