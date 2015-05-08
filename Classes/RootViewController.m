@@ -355,7 +355,7 @@
 	
 	
 	// Add a post fetch sort comparator
-	fetchedResultsController.postFetchComparator = ^(id a, id b) {
+	fetchedResultsController.postFetchComparator = ^NSComparisonResult(id a, id b) {
 		// if the city is a capital, it always comes before non-capitals
 		NSComparisonResult result = [((City *)a).isCapital compare:((City *)b).isCapital];		
 		if (result != NSOrderedSame)
@@ -374,7 +374,7 @@
 //	fetchedResultsController.postFetchFilterPredicate = [NSPredicate predicateWithFormat:@"population > %d", 100000];
 	
 	// Add a post fetch filter test
-	fetchedResultsController.postFetchFilterTest = ^(id obj, BOOL *stop) {
+	fetchedResultsController.postFetchFilterTest = ^BOOL(id obj, BOOL *stop) {
 		if ([(City *)obj populationValue] > 100000) {
 			return YES;
 		} else {
