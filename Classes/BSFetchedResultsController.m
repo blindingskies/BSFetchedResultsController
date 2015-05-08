@@ -1027,11 +1027,14 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 		for(BSFetchedResultsControllerSection *aSection in addedSections) {
 //			NSLog(@"Inserting section at %d", [_sortedSectionNames indexOfObject:aSection.key]);
 			// We need to tell the delegate to insert a section
-			[self.delegate controller:self 
-					 didChangeSection:aSection 
-							  atIndex:[_sortedSectionNames indexOfObject:aSection.key] 
-						forChangeType:NSFetchedResultsChangeInsert];					
-		}			
+            NSInteger index = [_sortedSectionNames indexOfObject:aSection.key];
+            if (index != NSNotFound) {
+                [self.delegate controller:self
+                         didChangeSection:aSection
+                                  atIndex:index
+                            forChangeType:NSFetchedResultsChangeInsert];
+            }
+		}
 	}
 	
 	
@@ -1379,9 +1382,10 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 			[_sectionsByName setObject:section forKey:key];			
 		
 			// The section needs to be inserted
-			[insertedSections addObject:section];
-			section.isDisplayed = YES;
-			
+            if (!isFiltered) {
+                [insertedSections addObject:section];
+                section.isDisplayed = YES;
+            }
 		}
 		
 		// Check to see if the object is already in controller
