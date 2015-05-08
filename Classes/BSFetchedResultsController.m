@@ -566,7 +566,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 		
 		// Update the various properties
 		[_sortedSectionNames release];
-		_sortedSectionNames = [[NSArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
+		_sortedSectionNames = [[NSMutableArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
 		
 		// Update other ordered things
 		NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
@@ -1292,7 +1292,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 	
 	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
+	_sortedSectionNames = [[NSMutableArray alloc] initWithArray:[[_sectionsByName allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)]];
 	
 	// Update other ordered things
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
@@ -1728,7 +1728,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 	
 	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
+	_sortedSectionNames = [[NSMutableArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
 	
 	// Update other ordered things
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
@@ -2024,7 +2024,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 	
 	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
+	_sortedSectionNames = [[NSMutableArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
 	
 	// Update other ordered things
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
@@ -2093,7 +2093,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 	
 	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
+	_sortedSectionNames = [[NSMutableArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
 	
 	// Update other ordered things
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];
@@ -2159,7 +2159,7 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 		
 	// Update the various properties
 	[_sortedSectionNames release];
-	_sortedSectionNames = [[NSArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
+	_sortedSectionNames = [[NSMutableArray alloc] initWithArray:[self.sections valueForKeyPath:@"key"]];
 	
 	// Update other ordered things
 	NSMutableArray *indexTitles = [[NSMutableArray alloc] init];

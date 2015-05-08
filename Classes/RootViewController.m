@@ -36,14 +36,14 @@
 	self.showFilteredItemGroup = YES;
 	
 	// Create toolbar items
-	UIBarButtonItem *aButton = [[UIBarButtonItem alloc] initWithTitle:@"Toggle Filter" style:UIBarButtonItemStyleBordered target:self action:@selector(toggleFilter:)];
+	UIBarButtonItem *aButton = [[UIBarButtonItem alloc] initWithTitle:@"Toggle Filter" style:UIBarButtonItemStylePlain target:self action:@selector(toggleFilter:)];
 	self.toggleFilter = aButton;
 	UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-	UIBarButtonItem *toggleShowingFilteredGroup = [[UIBarButtonItem alloc] initWithTitle:@"Show/Hide Filtered Group" style:UIBarButtonItemStyleBordered target:self action:@selector(toggleShowingFilteredItemsGroup:)];
+	UIBarButtonItem *toggleShowingFilteredGroup = [[UIBarButtonItem alloc] initWithTitle:@"Show/Hide Filtered Group" style:UIBarButtonItemStylePlain target:self action:@selector(toggleShowingFilteredItemsGroup:)];
 	if (self.showFilteredItemGroup) {
 		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStyleDone];
 	} else {
-		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStyleBordered];
+		[toggleShowingFilteredGroup setStyle:UIBarButtonItemStylePlain];
 	}
 	toggleShowingFilteredGroup.enabled = self.enableFilter; 
 	self.showOrHideFilteredGroup = toggleShowingFilteredGroup;
@@ -197,7 +197,7 @@
 	if (enableFilter) {
 		[self.toggleFilter setStyle:UIBarButtonItemStyleDone];
 	} else {
-		[self.toggleFilter setStyle:UIBarButtonItemStyleBordered];
+		[self.toggleFilter setStyle:UIBarButtonItemStylePlain];
 	}
 	self.showOrHideFilteredGroup.enabled = self.enableFilter;
 }
@@ -209,7 +209,7 @@
 	if (self.showFilteredItemGroup) {
 		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStyleDone];
 	} else {
-		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStyleBordered];
+		[self.showOrHideFilteredGroup setStyle:UIBarButtonItemStylePlain];
 	}
 }
 
@@ -422,6 +422,11 @@
             
         case NSFetchedResultsChangeDelete:
             [self.tableView deleteSections:[NSIndexSet indexSetWithIndex:sectionIndex] withRowAnimation:UITableViewRowAnimationFade];
+            break;
+
+        case NSFetchedResultsChangeMove:
+            break;
+        case NSFetchedResultsChangeUpdate:
             break;
     }
 }
