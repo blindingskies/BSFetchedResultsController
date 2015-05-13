@@ -1,4 +1,4 @@
-**WARNING: This project is legacy and not actively supported or maintained. Please do not use this in a production environment. It is left here for prosperity and learning purposes.**
+**WARNING: This project is legacy and not actively supported or maintained. Please do not use this in a production environment. It is left here for posterity and learning purposes.**
 
 **ADVICE: If you need a more powerful Fetched Results Controller, consider using [YapDatabase](http://github.com/yapstudios/yapdatabase) coupled with [TaylorSource](http://github.com/danthorpe/taylorsource).**
 
