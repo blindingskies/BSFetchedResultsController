@@ -947,24 +947,28 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 	 the Inserted, Deleted and Updated objects to merge the changes with our cache
 	 and if set inform the delegate of the processed changes.
 	 */		 
-	
+    
+    // prevent self retain cycle
+    __block BSFetchedResultsController* weakSelf = self;
+    NSFetchRequest* fetchRequest = _fetchRequest;
+    
 	didChangeNotificationHandler = [nc addObserverForName:NSManagedObjectContextObjectsDidChangeNotification object:self.managedObjectContext queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *aNotification) {
 		
 		// If we don't have a delegate or a cache, then we can return now
-		if (!self.delegate && !self.cacheName) return;
+		if (!weakSelf.delegate && !weakSelf.cacheName) return;
 		
 		// Get the user info dictionary
 		NSDictionary *userInfo = [aNotification userInfo];
 		
 		// Create a compound predicate containing an entity based predicate, the fetch request's predicate
 		// and if present a post fetch filter predicate
-		NSPredicate *entityType = [NSPredicate predicateWithFormat:@"entity == %@", [_fetchRequest entity]]; 
+		NSPredicate *entityType = [NSPredicate predicateWithFormat:@"entity == %@", [fetchRequest entity]];
 		NSMutableArray *predicates = [NSMutableArray arrayWithObjects:entityType, nil];
-		if([_fetchRequest predicate]) {
-			[predicates addObject:[_fetchRequest predicate]];
+		if([fetchRequest predicate]) {
+			[predicates addObject:[fetchRequest predicate]];
 		}
-		if(self.postFetchFilterPredicate) {
-			[predicates addObject:self.postFetchFilterPredicate];
+		if(weakSelf.postFetchFilterPredicate) {
+			[predicates addObject:weakSelf.postFetchFilterPredicate];
 		}
 		NSPredicate *compoundPredicate = [NSCompoundPredicate andPredicateWithSubpredicates:predicates];
 				
@@ -983,8 +987,8 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 		if ([changedObjects count] > 0) {
 			
 			// Update the sectional information		
-			NSDictionary *changes = [self updateObjects:changedObjects];
-			[self performTableInsertionsAndUpdates:changes];
+			NSDictionary *changes = [weakSelf updateObjects:changedObjects];
+			[weakSelf performTableInsertionsAndUpdates:changes];
 			
 		}		
 		
@@ -995,11 +999,11 @@ NSString *const kBSFRCSectionCacheFilteredKey = @"kBSFRCSectionCacheFilteredKey"
 		// If we've got deleted objects...
 		if ([deletedObjects count] > 0) {
 
-			[self performTableDeletions:deletedObjects];
+			[weakSelf performTableDeletions:deletedObjects];
 		}
 		
 		// Write the cache
-		[self writeCache];
+		[weakSelf writeCache];
 		
 	}];
 	
